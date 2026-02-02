@@ -162,13 +162,16 @@ export function registerAcli(
   const toolName = opts.name
   const description = generateDescription(commands, opts.description)
 
+  // Use plain JSON Schema instead of zod to avoid MCP SDK auto-expansion
+  const inputSchema = z.object({
+    command: z.string().describe(`CLI command (e.g., '${Object.keys(commands)[0]} --help')`),
+  })
+
   mcp.registerTool(
     toolName,
     {
       description,
-      inputSchema: {
-        command: z.string().describe(`CLI command (e.g., '${Object.keys(commands)[0]} --help')`),
-      },
+      inputSchema,
     },
     async (params: { command: string }) => {
       const result = await executeCommand(params.command, commands)

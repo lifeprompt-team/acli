@@ -19,4 +19,4 @@ export type {
 export { defineCommands } from './router/registry'
 
 // Version
-export const VERSION = '0.4.1'
+export const VERSION = '0.4.2'
