@@ -6,6 +6,9 @@
 
 **ACLI** (Agent CLI) is a lightweight CLI protocol for AI agents built on top of MCP (Model Context Protocol).
 
+<img width="1376" height="768" alt="image" src="https://github.com/user-attachments/assets/7986806b-7093-4f57-a6cf-314667b8f8bf" />
+
+
 ## Why ACLI?
 
 Traditional MCP tool definitions require extensive schema for each tool, consuming valuable context window space. ACLI solves this by:
