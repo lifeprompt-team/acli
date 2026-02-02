@@ -1,0 +1,57 @@
+{
+  "name": "@lifeprompt/acli",
+  "version": "0.1.0",
+  "description": "acli - Agent CLI protocol for AI agents on MCP",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm build"
+  },
+  "keywords": [
+    "mcp",
+    "ai",
+    "agent",
+    "cli",
+    "llm",
+    "model-context-protocol"
+  ],
+  "author": "lifeprompt-team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lifeprompt-team/acli"
+  },
+  "homepage": "https://github.com/lifeprompt-team/acli#readme",
+  "bugs": {
+    "url": "https://github.com/lifeprompt-team/acli/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
