@@ -2,16 +2,16 @@
  * MCP Tool integration
  */
 
-import { tokenize } from '../parser/tokenizer'
-import { error, type AcliResponse } from '../response/types'
-import {
-    type CommandRegistry,
-    extractCommandPath,
-    findCommand,
-    listCommands,
-} from '../router/registry'
 import { handleHelp, handleSchema, handleVersion } from '../discovery'
 import { parseArgs } from '../parser/args'
+import { tokenize } from '../parser/tokenizer'
+import { type AcliResponse, error } from '../response/types'
+import {
+  type CommandRegistry,
+  extractCommandPath,
+  findCommand,
+  listCommands,
+} from '../router/registry'
 
 export interface MCPToolDefinition {
   name: string
@@ -79,7 +79,9 @@ export function createAcli(commands: CommandRegistry): MCPToolDefinition {
       if (commandPath.length === 0) {
         return error('COMMAND_NOT_FOUND', `Command '${firstToken}' not found`, {
           hint: "Run 'help' for available commands",
-          examples: listCommands(commands).slice(0, 3).map((c) => c.name),
+          examples: listCommands(commands)
+            .slice(0, 3)
+            .map((c) => c.name),
         })
       }
 

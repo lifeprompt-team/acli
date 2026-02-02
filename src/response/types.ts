@@ -71,7 +71,7 @@ export function success<T>(data: T, message?: string): AcliSuccessResponse<T> {
 export function error(
   code: AcliErrorCode,
   message: string,
-  options?: { hint?: string; examples?: string[] }
+  options?: { hint?: string; examples?: string[] },
 ): AcliErrorResponse {
   return {
     success: false,

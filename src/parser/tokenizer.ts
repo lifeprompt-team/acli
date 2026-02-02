@@ -3,7 +3,7 @@
  * Splits command string into argument array without shell execution
  */
 
-import { error, type AcliErrorResponse } from '../response/types'
+import { type AcliErrorResponse, error } from '../response/types'
 
 /**
  * Forbidden characters that could indicate injection attempts
@@ -17,9 +17,7 @@ const MAX_COMMAND_LENGTH = 10000
 const MAX_ARGS = 100
 const MAX_ARG_LENGTH = 10000
 
-export type TokenizeResult =
-  | { ok: true; value: string[] }
-  | { ok: false; error: AcliErrorResponse }
+export type TokenizeResult = { ok: true; value: string[] } | { ok: false; error: AcliErrorResponse }
 
 /**
  * Tokenize a command string into an array of arguments
@@ -30,7 +28,10 @@ export function tokenize(input: string): TokenizeResult {
   if (input.length > MAX_COMMAND_LENGTH) {
     return {
       ok: false,
-      error: error('PARSE_ERROR', `Command exceeds maximum length of ${MAX_COMMAND_LENGTH} characters`),
+      error: error(
+        'PARSE_ERROR',
+        `Command exceeds maximum length of ${MAX_COMMAND_LENGTH} characters`,
+      ),
     }
   }
 
@@ -39,11 +40,9 @@ export function tokenize(input: string): TokenizeResult {
   if (forbidden) {
     return {
       ok: false,
-      error: error(
-        'INJECTION_BLOCKED',
-        `Forbidden character detected: "${forbidden[0]}"`,
-        { hint: 'Remove shell metacharacters from the command' }
-      ),
+      error: error('INJECTION_BLOCKED', `Forbidden character detected: "${forbidden[0]}"`, {
+        hint: 'Remove shell metacharacters from the command',
+      }),
     }
   }
 
@@ -51,21 +50,21 @@ export function tokenize(input: string): TokenizeResult {
   let current = ''
   let inSingleQuote = false
   let inDoubleQuote = false
-  let escape = false
+  let isEscaped = false
 
   for (let i = 0; i < input.length; i++) {
     const char = input[i]
 
     // Handle escape sequences
-    if (escape) {
+    if (isEscaped) {
       current += char
-      escape = false
+      isEscaped = false
       continue
     }
 
     // Backslash escape (only outside single quotes)
     if (char === '\\' && !inSingleQuote) {
-      escape = true
+      isEscaped = true
       continue
     }
 
@@ -87,7 +86,10 @@ export function tokenize(input: string): TokenizeResult {
         if (current.length > MAX_ARG_LENGTH) {
           return {
             ok: false,
-            error: error('PARSE_ERROR', `Argument exceeds maximum length of ${MAX_ARG_LENGTH} characters`),
+            error: error(
+              'PARSE_ERROR',
+              `Argument exceeds maximum length of ${MAX_ARG_LENGTH} characters`,
+            ),
           }
         }
         tokens.push(current)
@@ -118,7 +120,10 @@ export function tokenize(input: string): TokenizeResult {
     if (current.length > MAX_ARG_LENGTH) {
       return {
         ok: false,
-        error: error('PARSE_ERROR', `Argument exceeds maximum length of ${MAX_ARG_LENGTH} characters`),
+        error: error(
+          'PARSE_ERROR',
+          `Argument exceeds maximum length of ${MAX_ARG_LENGTH} characters`,
+        ),
       }
     }
     tokens.push(current)

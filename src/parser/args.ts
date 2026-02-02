@@ -2,8 +2,8 @@
  * Argument parser
  */
 
-import { error, type AcliErrorResponse } from '../response/types';
-import type { ArgumentDefinition, ParsedArgs } from '../router/registry';
+import { type AcliErrorResponse, error } from '../response/types'
+import type { ArgumentDefinition, ParsedArgs } from '../router/registry'
 
 export type ParseArgsResult =
   | { ok: true; value: ParsedArgs }
@@ -14,7 +14,7 @@ export type ParseArgsResult =
  */
 export function parseArgs(
   tokens: string[],
-  argDefs: Record<string, ArgumentDefinition>
+  argDefs: Record<string, ArgumentDefinition>,
 ): ParseArgsResult {
   const result: ParsedArgs = {}
 
@@ -127,7 +127,7 @@ export function parseArgs(
 
 function findArgDef(
   defs: Record<string, ArgumentDefinition>,
-  key: string
+  key: string,
 ): ArgumentDefinition | undefined {
   // Try exact match
   if (defs[key]) return defs[key]
@@ -139,7 +139,7 @@ function findArgDef(
 
 function findArgDefByShort(
   defs: Record<string, ArgumentDefinition>,
-  shortKey: string
+  shortKey: string,
 ): { name: string; def: ArgumentDefinition } | undefined {
   for (const [name, def] of Object.entries(defs)) {
     if (name[0] === shortKey) {
@@ -151,7 +151,7 @@ function findArgDefByShort(
 
 function parseValue(
   value: string,
-  type: ArgumentDefinition['type']
+  type: ArgumentDefinition['type'],
 ): { value: unknown; error?: string } {
   switch (type) {
     case 'string':
@@ -159,7 +159,7 @@ function parseValue(
 
     case 'integer': {
       const num = parseInt(value, 10)
-      if (isNaN(num)) {
+      if (Number.isNaN(num)) {
         return { value: undefined, error: 'expected integer' }
       }
       return { value: num }
@@ -167,7 +167,7 @@ function parseValue(
 
     case 'number': {
       const num = parseFloat(value)
-      if (isNaN(num)) {
+      if (Number.isNaN(num)) {
         return { value: undefined, error: 'expected number' }
       }
       return { value: num }
@@ -184,7 +184,7 @@ function parseValue(
     case 'datetime': {
       // Basic ISO8601 validation
       const date = new Date(value)
-      if (isNaN(date.getTime())) {
+      if (Number.isNaN(date.getTime())) {
         return { value: undefined, error: 'expected ISO8601 date' }
       }
       return { value: date }

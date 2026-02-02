@@ -2,23 +2,21 @@
  * Discovery commands: help, schema, version
  */
 
-import { success, type AcliResponse } from '../response/types'
+import { type AcliResponse, success } from '../response/types'
 import {
-    type CommandRegistry,
-    type CommandDefinition,
-    findCommand,
-    listCommands,
+  type CommandDefinition,
+  type CommandRegistry,
+  findCommand,
+  listCommands,
 } from '../router/registry'
+
 // Version constant (avoid circular import)
 const VERSION = '0.1.0'
 
 /**
  * Handle 'help' command
  */
-export function handleHelp(
-  registry: CommandRegistry,
-  args: string[]
-): AcliResponse {
+export function handleHelp(registry: CommandRegistry, args: string[]): AcliResponse {
   if (args.length === 0) {
     // Root help
     const commands = listCommands(registry)
@@ -45,10 +43,7 @@ export function handleHelp(
 /**
  * Handle 'schema' command
  */
-export function handleSchema(
-  registry: CommandRegistry,
-  args: string[]
-): AcliResponse {
+export function handleSchema(registry: CommandRegistry, args: string[]): AcliResponse {
   if (args.length === 0) {
     // Full schema
     return success({
@@ -87,10 +82,7 @@ export function handleVersion(): AcliResponse {
   })
 }
 
-function formatCommandHelp(
-  name: string,
-  def: CommandDefinition
-): Record<string, unknown> {
+function formatCommandHelp(name: string, def: CommandDefinition): Record<string, unknown> {
   const result: Record<string, unknown> = {
     command: name,
     description: def.description,
@@ -117,9 +109,7 @@ function formatCommandHelp(
   return result
 }
 
-function buildInputSchema(
-  def: CommandDefinition
-): Record<string, unknown> {
+function buildInputSchema(def: CommandDefinition): Record<string, unknown> {
   if (!def.args) {
     return { type: 'object', properties: {} }
   }
@@ -145,9 +135,7 @@ function buildInputSchema(
   }
 }
 
-function buildSchemaTree(
-  registry: CommandRegistry
-): Record<string, unknown> {
+function buildSchemaTree(registry: CommandRegistry): Record<string, unknown> {
   const result: Record<string, unknown> = {}
 
   for (const [name, def] of Object.entries(registry)) {

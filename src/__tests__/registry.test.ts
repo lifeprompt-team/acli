@@ -1,10 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import {
-  defineCommands,
-  findCommand,
-  extractCommandPath,
-  listCommands,
-} from '../router/registry'
+import { describe, expect, it } from 'vitest'
+import { defineCommands, extractCommandPath, findCommand, listCommands } from '../router/registry'
 
 describe('command registry', () => {
   const testCommands = defineCommands({
@@ -74,21 +69,13 @@ describe('command registry', () => {
     })
 
     it('extracts command with args', () => {
-      const [path, args] = extractCommandPath(testCommands, [
-        'calendar',
-        'events',
-        '--today',
-      ])
+      const [path, args] = extractCommandPath(testCommands, ['calendar', 'events', '--today'])
       expect(path).toEqual(['calendar', 'events'])
       expect(args).toEqual(['--today'])
     })
 
     it('stops at options', () => {
-      const [path, args] = extractCommandPath(testCommands, [
-        'calendar',
-        '--help',
-        'events',
-      ])
+      const [path, args] = extractCommandPath(testCommands, ['calendar', '--help', 'events'])
       expect(path).toEqual(['calendar'])
       expect(args).toEqual(['--help', 'events'])
     })

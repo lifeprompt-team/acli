@@ -40,10 +40,7 @@ export function defineCommands<T extends CommandRegistry>(commands: T): T {
 /**
  * Find a command definition by path
  */
-export function findCommand(
-  registry: CommandRegistry,
-  path: string[]
-): CommandDefinition | null {
+export function findCommand(registry: CommandRegistry, path: string[]): CommandDefinition | null {
   if (path.length === 0) return null
 
   const first = registry[path[0]]
@@ -67,11 +64,11 @@ export function findCommand(
  */
 export function extractCommandPath(
   registry: CommandRegistry,
-  tokens: string[]
+  tokens: string[],
 ): [string[], string[]] {
   const path: string[] = []
   let currentRegistry: CommandRegistry | undefined = registry
-  let currentCommand: CommandDefinition | undefined = undefined
+  let currentCommand: CommandDefinition | undefined
   let i = 0
 
   for (; i < tokens.length; i++) {
@@ -80,7 +77,7 @@ export function extractCommandPath(
     // Stop if we hit an option
     if (token.startsWith('-')) break
 
-    if (currentRegistry && currentRegistry[token]) {
+    if (currentRegistry?.[token]) {
       path.push(token)
       currentCommand = currentRegistry[token]
       currentRegistry = currentCommand.subcommands
@@ -97,7 +94,7 @@ export function extractCommandPath(
  */
 export function listCommands(
   registry: CommandRegistry,
-  prefix: string[] = []
+  prefix: string[] = [],
 ): Array<{ name: string; description: string }> {
   const result: Array<{ name: string; description: string }> = []
 

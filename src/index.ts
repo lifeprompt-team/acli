@@ -2,22 +2,20 @@
 // Lightweight CLI protocol for AI agents on MCP
 
 export { createAcli } from './mcp/tool'
-export { defineCommands } from './router/registry'
-
 // Types
 export type {
-  AcliSuccessResponse,
+  AcliErrorCode,
   AcliErrorResponse,
   AcliResponse,
-  AcliErrorCode,
+  AcliSuccessResponse,
 } from './response/types'
-
 export type {
-  CommandDefinition,
   ArgumentDefinition,
   ArgumentType,
+  CommandDefinition,
   ParsedArgs,
 } from './router/registry'
+export { defineCommands } from './router/registry'
 
 // Version
 export const VERSION = '0.1.0'
