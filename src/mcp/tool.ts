@@ -9,10 +9,10 @@ import { parseArgs } from '../parser/args'
 import { tokenize } from '../parser/tokenizer'
 import { type AcliResponse, error } from '../response/types'
 import {
-  type CommandRegistry,
-  extractCommandPath,
-  findCommand,
-  listCommands,
+    type CommandRegistry,
+    extractCommandPath,
+    findCommand,
+    listCommands,
 } from '../router/registry'
 
 /**
