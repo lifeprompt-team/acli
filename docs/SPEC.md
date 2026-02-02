@@ -96,9 +96,8 @@ Input: "calendar events --today --max 10"
          ▼
 ┌─────────────────────────────────────────┐
 │ 2. Validate                             │
-│    - Check forbidden characters         │
 │    - Verify command whitelist           │
-│    - Sanitize arguments                 │
+│    - Check argument types               │
 └─────────────────────────────────────────┘
          │
          ▼
@@ -197,18 +196,15 @@ hello\ world      → hello world
 
 ### 4.2 Security Validation
 
-#### 4.2.1 Forbidden Characters
+#### 4.2.1 Shell-less Design
 
-Commands containing the following characters MUST be rejected.
-
-```
-; & | ` $ ( ) { } [ ] < > ! \
-```
+ACLI does NOT execute any shell commands. All input characters are treated as literal text and passed to handlers as string arguments. This eliminates shell injection vulnerabilities by design.
 
 **Example:**
 ```
 Input:  "calendar events; rm -rf /"
-Result: ERROR - INJECTION_BLOCKED
+Result: ["calendar", "events;", "rm", "-rf", "/"]
+        (treated as plain text tokens, not shell commands)
 ```
 
 #### 4.2.2 Constraints
@@ -319,7 +315,6 @@ interface AcliErrorResponse {
 | Code | Description | HTTP Equivalent |
 |------|-------------|-----------------|
 | `PARSE_ERROR` | Failed to parse command string | 400 |
-| `INJECTION_BLOCKED` | Injection attack detected | 400 |
 | `COMMAND_NOT_FOUND` | Command does not exist | 404 |
 | `PERMISSION_DENIED` | Insufficient permissions | 403 |
 | `VALIDATION_ERROR` | Argument validation failed | 400 |
@@ -587,9 +582,8 @@ type ArgumentType =
 
 | Threat | Mitigation |
 |--------|------------|
-| Shell Injection | No shell usage (no execve) |
+| Shell Injection | No shell usage - all input treated as plain text |
 | Command Injection | Command whitelist |
-| Argument Injection | Forbidden character detection/rejection |
 | Path Traversal | Path normalization/validation |
 | DoS | Length/count limits |
 | Privilege Escalation | Command-level permission separation |
@@ -755,8 +749,8 @@ mcpServer.registerTool(cliTool)
 
 Conformance tests verify the following categories:
 
-1. **Parser Tests** - Tokenization, forbidden character detection
-2. **Security Tests** - Injection prevention
+1. **Parser Tests** - Tokenization, quote handling, escape sequences
+2. **Security Tests** - Shell-less execution, command whitelist
 3. **Discovery Tests** - Accuracy of help/schema/version
 4. **Response Tests** - Response format compliance
 
@@ -788,7 +782,6 @@ safe-char       = %x20-21 / %x23-26 / %x28-5B / %x5D-7E  ; exclude \ and "
 | Code | Message Template | Hint Template |
 |------|------------------|---------------|
 | `PARSE_ERROR` | "Failed to parse command: {detail}" | "Check command syntax" |
-| `INJECTION_BLOCKED` | "Forbidden character detected: {char}" | "Remove shell metacharacters" |
 | `COMMAND_NOT_FOUND` | "Command '{cmd}' not found" | "Run 'help' for available commands" |
 | `PERMISSION_DENIED` | "Permission denied for '{cmd}'" | "Check your access level" |
 | `VALIDATION_ERROR` | "Invalid argument: {arg}" | "{hint}" |

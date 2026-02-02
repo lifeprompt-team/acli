@@ -15,13 +15,13 @@ Traditional MCP requires each tool to have a complete JSON Schema definition. Fo
 
 ### 2. Shell-less Security
 
-Unlike traditional CLIs that invoke shell commands, ACLI parses and executes commands directly in-process.
+Unlike traditional CLIs that invoke shell commands, ACLI parses and executes commands directly in-process. All input is treated as plain text strings.
 
 **Security measures:**
-- Forbidden characters: `` ; & | ` $ ( ) { } [ ] < > ! \ ``
-- No shell invocation
+- No shell invocation - all characters are treated as literal text
 - Type validation before handler execution
 - Command whitelist (only registered commands)
+- DoS prevention via length/count limits
 
 ### 3. Dual Interface
 
@@ -101,12 +101,13 @@ tokenize("calendar events --today")
 // → { ok: true, value: ["calendar", "events", "--today"] }
 
 tokenize("events; rm -rf /")
-// → { ok: false, error: { code: "INJECTION_BLOCKED", ... } }
+// → { ok: true, value: ["events;", "rm", "-rf", "/"] }
+// Note: All characters are treated as plain text (no shell execution)
 ```
 
 **Features:**
 - POSIX-style quoting (`"hello world"`, `'single'`)
-- Security character detection
+- Backslash escape support
 - Whitespace normalization
 
 ### Command Registry (`src/router/registry.ts`)
@@ -210,8 +211,7 @@ All errors return structured `AcliErrorResponse`:
 | `COMMAND_NOT_FOUND` | Unknown command |
 | `VALIDATION_ERROR` | Argument validation failed |
 | `EXECUTION_ERROR` | Handler threw |
-| `PARSE_ERROR` | Malformed input |
-| `INJECTION_BLOCKED` | Dangerous characters |
+| `PARSE_ERROR` | Malformed input (unclosed quotes, etc.) |
 | `PERMISSION_DENIED` | Auth failed |
 
 ---

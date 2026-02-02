@@ -71,16 +71,25 @@ describe('tokenizer', () => {
   })
 
   describe('escape handling', () => {
-    it('blocks backslash for security', () => {
-      // Backslash is blocked to prevent escape sequence attacks
+    it('handles backslash escape for spaces', () => {
       const result = tokenize('echo hello\\ world')
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
-        expect(result.error.error.code).toBe('INJECTION_BLOCKED')
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value).toEqual(['echo', 'hello world'])
       }
     })
 
-    it('allows quotes to escape spaces instead', () => {
+    it('handles backslash escape for special characters', () => {
+      // バックスラッシュは次の文字をリテラルとして扱う（シェルのエスケープシーケンス展開はしない）
+      const result = tokenize('echo "hello\\nworld"')
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        // \n は改行文字ではなく、リテラルの "n" として扱われる
+        expect(result.value).toEqual(['echo', 'hellonworld'])
+      }
+    })
+
+    it('allows quotes to escape spaces', () => {
       const result = tokenize('echo "hello world"')
       expect(result.ok).toBe(true)
       if (result.ok) {
@@ -89,60 +98,61 @@ describe('tokenizer', () => {
     })
   })
 
-  describe('security - injection prevention', () => {
-    it('blocks semicolon', () => {
+  describe('special characters - treated as plain text', () => {
+    // ACLIはシェルを使用しないため、これらの文字は単なるテキストとして扱われる
+    it('treats semicolon as plain text', () => {
       const result = tokenize('foo; rm -rf /')
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
-        expect(result.error.error.code).toBe('INJECTION_BLOCKED')
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value).toEqual(['foo;', 'rm', '-rf', '/'])
       }
     })
 
-    it('blocks pipe', () => {
+    it('treats pipe as plain text', () => {
       const result = tokenize('foo | bar')
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
-        expect(result.error.error.code).toBe('INJECTION_BLOCKED')
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value).toEqual(['foo', '|', 'bar'])
       }
     })
 
-    it('blocks ampersand', () => {
+    it('treats ampersand as plain text', () => {
       const result = tokenize('foo && bar')
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
-        expect(result.error.error.code).toBe('INJECTION_BLOCKED')
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value).toEqual(['foo', '&&', 'bar'])
       }
     })
 
-    it('blocks backticks', () => {
+    it('treats backticks as plain text', () => {
       const result = tokenize('echo `whoami`')
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
-        expect(result.error.error.code).toBe('INJECTION_BLOCKED')
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value).toEqual(['echo', '`whoami`'])
       }
     })
 
-    it('blocks dollar sign', () => {
+    it('treats dollar sign as plain text', () => {
       const result = tokenize('echo $HOME')
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
-        expect(result.error.error.code).toBe('INJECTION_BLOCKED')
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value).toEqual(['echo', '$HOME'])
       }
     })
 
-    it('blocks parentheses', () => {
+    it('treats parentheses as plain text', () => {
       const result = tokenize('$(whoami)')
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
-        expect(result.error.error.code).toBe('INJECTION_BLOCKED')
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value).toEqual(['$(whoami)'])
       }
     })
 
-    it('blocks redirect', () => {
+    it('treats redirect symbols as plain text', () => {
       const result = tokenize('echo foo > /etc/passwd')
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
-        expect(result.error.error.code).toBe('INJECTION_BLOCKED')
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value).toEqual(['echo', 'foo', '>', '/etc/passwd'])
       }
     })
   })

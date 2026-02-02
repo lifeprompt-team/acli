@@ -1,17 +1,16 @@
 /**
  * POSIX-like command tokenizer
  * Splits command string into argument array without shell execution
+ *
+ * Note: This tokenizer does NOT execute any shell commands.
+ * All input is treated as plain text and passed to handlers as string arguments.
+ * Security validation (SQL injection, etc.) should be done at the handler level.
  */
 
 import { type AcliErrorResponse, error } from '../response/types'
 
 /**
- * Forbidden characters that could indicate injection attempts
- */
-const FORBIDDEN_CHARS = /[;&|`$(){}[\]<>!\\]/
-
-/**
- * Maximum constraints
+ * Maximum constraints for DoS prevention
  */
 const MAX_COMMAND_LENGTH = 10000
 const MAX_ARGS = 100
@@ -24,7 +23,7 @@ export type TokenizeResult = { ok: true; value: string[] } | { ok: false; error:
  * Handles single quotes, double quotes, and escape sequences
  */
 export function tokenize(input: string): TokenizeResult {
-  // Length check
+  // Length check (DoS prevention)
   if (input.length > MAX_COMMAND_LENGTH) {
     return {
       ok: false,
@@ -32,17 +31,6 @@ export function tokenize(input: string): TokenizeResult {
         'PARSE_ERROR',
         `Command exceeds maximum length of ${MAX_COMMAND_LENGTH} characters`,
       ),
-    }
-  }
-
-  // Check for forbidden characters
-  const forbidden = input.match(FORBIDDEN_CHARS)
-  if (forbidden) {
-    return {
-      ok: false,
-      error: error('INJECTION_BLOCKED', `Forbidden character detected: "${forbidden[0]}"`, {
-        hint: 'Remove shell metacharacters from the command',
-      }),
     }
   }
 

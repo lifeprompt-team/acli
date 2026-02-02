@@ -103,11 +103,12 @@ describe('MCP tool', () => {
       }
     })
 
-    it('blocks injection attempts', async () => {
+    it('treats shell metacharacters as plain text', async () => {
+      // ACLIはシェルを使用しないため、特殊文字は単なるテキストとして扱われる
       const result = await tool.execute({ command: 'echo --message "test; rm -rf /"' })
-      expect(result.success).toBe(false)
-      if (!result.success) {
-        expect(result.error.code).toBe('INJECTION_BLOCKED')
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data).toEqual({ echoed: 'test; rm -rf /' })
       }
     })
   })

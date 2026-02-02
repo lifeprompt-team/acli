@@ -3,7 +3,6 @@
  */
 export type AcliErrorCode =
   | 'PARSE_ERROR'
-  | 'INJECTION_BLOCKED'
   | 'COMMAND_NOT_FOUND'
   | 'PERMISSION_DENIED'
   | 'VALIDATION_ERROR'

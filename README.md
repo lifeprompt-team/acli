@@ -294,7 +294,6 @@ interface AcliErrorResponse {
 | `VALIDATION_ERROR` | Invalid arguments or missing required    |
 | `EXECUTION_ERROR`  | Handler threw an error                   |
 | `PARSE_ERROR`      | Malformed command string                 |
-| `INJECTION_BLOCKED`| Dangerous characters detected            |
 | `PERMISSION_DENIED`| Authorization failed                     |
 
 ---
@@ -303,10 +302,10 @@ interface AcliErrorResponse {
 
 ACLI is designed with security in mind:
 
-- **No Shell Execution**: Commands are parsed and executed directly in-process
-- **Forbidden Characters**: `` ; & | ` $ ( ) { } [ ] < > ! \ `` are blocked
+- **No Shell Execution**: Commands are parsed and executed directly in-process. All input is treated as plain text.
 - **Command Whitelist**: Only registered commands can be executed
 - **Argument Validation**: Type checking before handler execution
+- **DoS Prevention**: Length and count limits on commands and arguments
 
 ---
 
