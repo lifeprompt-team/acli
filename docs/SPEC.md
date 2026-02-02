@@ -10,21 +10,21 @@
 
 ### 1.1 What is acli?
 
-**acli** (Agent CLI) は、AIエージェントがツールを操作するための軽量なCLIベースのプロトコルです。MCP (Model Context Protocol) の上に構築され、単一のMCPツール定義でCLI形式のコマンドインターフェースを提供します。
+**acli** (Agent CLI) is a lightweight CLI-based protocol for AI agents to operate tools. Built on top of MCP (Model Context Protocol), it provides a CLI-style command interface through a single MCP tool definition.
 
-**読み方:** エークリ / エーシーエルアイ  
-**npm:** `@sunaba/acli`
+**Pronunciation:** A-C-L-I / Agent CLI  
+**npm:** `@lifeprompt/acli`
 
 ### 1.2 Design Goals
 
-| 目標 | 説明 |
-|------|------|
-| **コンテキスト効率** | MCPツール定義を最小化し、知識は `help` で動的取得 |
-| **シェルレス** | セキュリティのためにシェルを完全に排除 |
-| **ゼロトラスト** | エージェントの入力を信頼しない前提で設計 |
-| **教育的エラー** | 失敗から学べるエラーメッセージ |
-| **発見可能性** | 安全に探索できるヘルプ体系 |
-| **人間互換** | 人間もエージェントも同じインターフェース |
+| Goal | Description |
+|------|-------------|
+| **Context Efficiency** | Minimize MCP tool definitions; knowledge is retrieved dynamically via `help` |
+| **Shell-less** | Completely eliminate shell for security |
+| **Zero Trust** | Design assumes agent input cannot be trusted |
+| **Educational Errors** | Error messages that enable learning from failures |
+| **Discoverability** | Help system that allows safe exploration |
+| **Human Compatible** | Same interface for both humans and agents |
 
 ### 1.3 Position in the Ecosystem
 
@@ -126,7 +126,7 @@ Input: "calendar events --today --max 10"
 
 ### 3.1 Tool Schema
 
-すべてのacli実装は、以下のMCPツール定義を公開しなければなりません (MUST)。
+All acli implementations MUST expose the following MCP tool definition.
 
 ```json
 {
@@ -147,24 +147,24 @@ Input: "calendar events --today --max 10"
 
 ### 3.2 Rationale
 
-従来のMCPアプローチでは、各ツールを個別に定義します：
+Traditional MCP approach defines each tool individually:
 
 ```json
-// 従来: 100個のツール = 100個のスキーマ定義 = 大量のコンテキスト消費
+// Traditional: 100 tools = 100 schema definitions = massive context consumption
 { "name": "calendar_events", "inputSchema": { ... } }
 { "name": "calendar_create", "inputSchema": { ... } }
 { "name": "drive_list", "inputSchema": { ... } }
 // ... 97 more tools
 ```
 
-acliでは1つのツール定義で全機能をカバー：
+acli covers all functionality with a single tool definition:
 
 ```json
-// acli: 1つのツール定義 = 最小限のコンテキスト
+// acli: 1 tool definition = minimal context
 { "name": "cli", "inputSchema": { "command": "string" } }
 ```
 
-エージェントは `help` コマンドで必要な情報を動的に取得します。
+Agents retrieve necessary information dynamically via the `help` command.
 
 ---
 
@@ -174,7 +174,7 @@ acliでは1つのツール定義で全機能をカバー：
 
 #### 4.1.1 Basic Rules
 
-コマンド文字列は POSIX 準拠のシェル引数分割規則に従ってトークン化されます。
+Command strings are tokenized following POSIX-compliant shell argument splitting rules.
 
 ```
 Input:  "calendar events --from '2026-02-01' --max 10"
@@ -185,9 +185,9 @@ Output: ["calendar", "events", "--from", "2026-02-01", "--max", "10"]
 
 | Quote Type | Behavior |
 |------------|----------|
-| Single quotes (`'...'`) | リテラル文字列、エスケープなし |
-| Double quotes (`"..."`) | 文字列、バックスラッシュエスケープ有効 |
-| Backslash (`\`) | 次の1文字をエスケープ |
+| Single quotes (`'...'`) | Literal string, no escaping |
+| Double quotes (`"..."`) | String with backslash escaping enabled |
+| Backslash (`\`) | Escapes the next character |
 
 ```
 'hello world'     → hello world
@@ -199,13 +199,13 @@ hello\ world      → hello world
 
 #### 4.2.1 Forbidden Characters
 
-以下の文字を含むコマンドは拒否されなければなりません (MUST)。
+Commands containing the following characters MUST be rejected.
 
 ```
 ; & | ` $ ( ) { } [ ] < > ! \
 ```
 
-**例:**
+**Example:**
 ```
 Input:  "calendar events; rm -rf /"
 Result: ERROR - INJECTION_BLOCKED
@@ -215,13 +215,13 @@ Result: ERROR - INJECTION_BLOCKED
 
 | Constraint | Value | Rationale |
 |------------|-------|-----------|
-| Max command length | 10,000 characters | DoS防止 |
-| Max argument count | 100 | 配列枯渇防止 |
-| Max argument length | 10,000 characters | メモリ保護 |
+| Max command length | 10,000 characters | DoS prevention |
+| Max argument count | 100 | Array exhaustion prevention |
+| Max argument length | 10,000 characters | Memory protection |
 
 #### 4.2.3 Path Traversal Prevention
 
-パス引数に `..` または絶対パス (`/`, `C:\`) を含む場合、サニタイズまたは拒否すべきです (SHOULD)。
+Path arguments containing `..` or absolute paths (`/`, `C:\`) SHOULD be sanitized or rejected.
 
 ```
 Input:  "drive download --path ../../../etc/passwd"
@@ -260,7 +260,7 @@ interface AcliSuccessResponse {
 }
 ```
 
-**例:**
+**Example:**
 ```json
 {
   "success": true,
@@ -295,7 +295,7 @@ interface AcliErrorResponse {
 }
 ```
 
-**例:**
+**Example:**
 ```json
 {
   "success": false,
@@ -318,19 +318,19 @@ interface AcliErrorResponse {
 
 | Code | Description | HTTP Equivalent |
 |------|-------------|-----------------|
-| `PARSE_ERROR` | コマンド文字列のパースに失敗 | 400 |
-| `INJECTION_BLOCKED` | インジェクション攻撃を検出 | 400 |
-| `COMMAND_NOT_FOUND` | コマンドが存在しない | 404 |
-| `PERMISSION_DENIED` | 権限が不足 | 403 |
-| `VALIDATION_ERROR` | 引数のバリデーションに失敗 | 400 |
-| `EXECUTION_ERROR` | コマンド実行中のエラー | 500 |
-| `TIMEOUT` | 実行がタイムアウト | 504 |
-| `RATE_LIMITED` | レート制限に到達 | 429 |
-| `PATH_TRAVERSAL_BLOCKED` | パストラバーサル攻撃を検出 | 400 |
+| `PARSE_ERROR` | Failed to parse command string | 400 |
+| `INJECTION_BLOCKED` | Injection attack detected | 400 |
+| `COMMAND_NOT_FOUND` | Command does not exist | 404 |
+| `PERMISSION_DENIED` | Insufficient permissions | 403 |
+| `VALIDATION_ERROR` | Argument validation failed | 400 |
+| `EXECUTION_ERROR` | Error during command execution | 500 |
+| `TIMEOUT` | Execution timed out | 504 |
+| `RATE_LIMITED` | Rate limit reached | 429 |
+| `PATH_TRAVERSAL_BLOCKED` | Path traversal attack detected | 400 |
 
 ### 5.3 MCP Content Mapping
 
-acliレスポンスは、MCP の `CallToolResult` にマッピングされます：
+acli responses are mapped to MCP's `CallToolResult`:
 
 ```typescript
 // acli Response → MCP CallToolResult
@@ -351,15 +351,15 @@ acliレスポンスは、MCP の `CallToolResult` にマッピングされます
 
 ### 6.1 Reserved Commands
 
-以下のコマンドはすべてのacli実装で予約されており、実装されなければなりません (MUST)。
+The following commands are reserved in all acli implementations and MUST be implemented.
 
 | Command | Description |
 |---------|-------------|
-| `help` | コマンド一覧を表示 |
-| `help <command>` | 特定コマンドの詳細を表示 |
-| `schema` | 全コマンドのスキーマをJSON形式で出力 |
-| `schema <command>` | 特定コマンドのスキーマを出力 |
-| `version` | acliバージョンと実装情報を出力 |
+| `help` | Display command list |
+| `help <command>` | Display details for specific command |
+| `schema` | Output schemas for all commands in JSON format |
+| `schema <command>` | Output schema for specific command |
+| `version` | Output acli version and implementation info |
 
 ### 6.2 Help Response Format
 
@@ -499,7 +499,7 @@ Output:
   "data": {
     "acli_version": "0.1.0",
     "implementation": {
-      "name": "sunaba-acp",
+      "name": "lifeprompt-acli",
       "version": "1.0.0"
     },
     "capabilities": {
@@ -516,7 +516,7 @@ Output:
 
 ### 7.1 Command Structure
 
-コマンドは階層的に構成されます：
+Commands are structured hierarchically:
 
 ```
 <root-command> [<subcommand>...] [<positional-args>...] [<options>...]
@@ -531,13 +531,13 @@ Examples:
 
 | Type | Format | Examples |
 |------|--------|----------|
-| `string` | 任意の文字列 | `"hello world"`, `file.txt` |
-| `integer` | 整数 | `10`, `-5`, `0` |
-| `number` | 数値（小数含む） | `3.14`, `-0.5` |
+| `string` | Any string | `"hello world"`, `file.txt` |
+| `integer` | Integer | `10`, `-5`, `0` |
+| `number` | Number (including decimals) | `3.14`, `-0.5` |
 | `boolean` | `true` / `false` | `true`, `false` |
-| `flag` | 存在で true | `--today` (引数なし) |
+| `flag` | Presence means true | `--today` (no value) |
 | `datetime` | ISO8601 | `2026-02-02`, `2026-02-02T10:00:00Z` |
-| `array` | カンマ区切り | `a,b,c` → `["a", "b", "c"]` |
+| `array` | Comma-separated | `a,b,c` → `["a", "b", "c"]` |
 
 ### 7.3 Option Syntax
 
@@ -587,16 +587,16 @@ type ArgumentType =
 
 | Threat | Mitigation |
 |--------|------------|
-| Shell Injection | シェルを使用しない (execve不使用) |
-| Command Injection | コマンドホワイトリスト |
-| Argument Injection | 禁止文字の検出・拒否 |
-| Path Traversal | パス正規化・検証 |
-| DoS | 長さ・数量制限 |
-| Privilege Escalation | コマンドレベルの権限分離 |
+| Shell Injection | No shell usage (no execve) |
+| Command Injection | Command whitelist |
+| Argument Injection | Forbidden character detection/rejection |
+| Path Traversal | Path normalization/validation |
+| DoS | Length/count limits |
+| Privilege Escalation | Command-level permission separation |
 
 ### 8.2 Command Allowlist
 
-実装は、実行可能なコマンドのホワイトリストを維持すべきです (SHOULD)。
+Implementations SHOULD maintain a whitelist of executable commands.
 
 ```typescript
 const ALLOWED_COMMANDS = new Set([
@@ -605,13 +605,13 @@ const ALLOWED_COMMANDS = new Set([
 ])
 
 const DENIED_SUBCOMMANDS = new Map([
-  ["gmail", new Set(["delegates", "autoforward"])],  // 危険な操作
+  ["gmail", new Set(["delegates", "autoforward"])],  // Dangerous operations
 ])
 ```
 
 ### 8.3 Audit Logging
 
-実装は、すべてのコマンド実行を監査ログに記録すべきです (SHOULD)。
+Implementations SHOULD log all command executions to an audit log.
 
 ```typescript
 interface AuditLogEntry {
@@ -631,9 +631,9 @@ interface AuditLogEntry {
 
 ### 9.1 Custom Commands
 
-実装は、標準コマンドに加えて独自コマンドを追加できます (MAY)。
+Implementations MAY add custom commands in addition to standard commands.
 
-カスタムコマンドは `x-` プレフィックスを使用すべきです (SHOULD)：
+Custom commands SHOULD use the `x-` prefix:
 
 ```
 x-mycompany-special-tool --option value
@@ -641,11 +641,11 @@ x-mycompany-special-tool --option value
 
 ### 9.2 Capability Declaration
 
-`version` コマンドで、サポートする拡張機能を宣言できます：
+Extensions can be declared via the `version` command:
 
 ```json
 {
-  "acp_version": "0.1.0",
+  "acli_version": "0.1.0",
   "capabilities": {
     "commands": ["calendar", "drive", "gmail"],
     "extensions": [
@@ -662,18 +662,18 @@ x-mycompany-special-tool --option value
 
 ### 10.1 Minimal Implementation
 
-最小限のacli実装に必要な要素：
+Elements required for a minimal acli implementation:
 
-1. **MCP Tool 登録** - `cli` ツールを公開
-2. **Parser** - 安全なトークナイザー
-3. **Router** - コマンドルーティング
+1. **MCP Tool Registration** - Expose `cli` tool
+2. **Parser** - Secure tokenizer
+3. **Router** - Command routing
 4. **Discovery** - `help`, `schema`, `version`
-5. **Response Formatter** - AcliResponse構造
+5. **Response Formatter** - AcliResponse structure
 
 ### 10.2 Reference Implementation Structure
 
 ```
-@sunaba/acli
+@lifeprompt/acli
 ├── src/
 │   ├── parser/
 │   │   ├── tokenizer.ts      # POSIX-like tokenization
@@ -701,7 +701,7 @@ x-mycompany-special-tool --option value
 ### 10.3 Usage Example
 
 ```typescript
-import { createAcli, defineCommands } from '@sunaba/acli'
+import { createAcli, defineCommands } from '@lifeprompt/acli'
 
 // Define commands
 const commands = defineCommands({
@@ -753,12 +753,12 @@ mcpServer.registerTool(cliTool)
 
 ### 11.2 Test Suite
 
-準拠テストは以下のカテゴリを検証します：
+Conformance tests verify the following categories:
 
-1. **Parser Tests** - トークン化、禁止文字検出
-2. **Security Tests** - インジェクション防止
-3. **Discovery Tests** - help/schema/version の正確性
-4. **Response Tests** - レスポンス形式の準拠
+1. **Parser Tests** - Tokenization, forbidden character detection
+2. **Security Tests** - Injection prevention
+3. **Discovery Tests** - Accuracy of help/schema/version
+4. **Response Tests** - Response format compliance
 
 ---
 
