@@ -1,14 +1,14 @@
-# acli - Agent CLI
+# ACLI - Agent CLI
 
 [![CI](https://github.com/lifeprompt-team/acli/actions/workflows/ci.yml/badge.svg)](https://github.com/lifeprompt-team/acli/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/@lifeprompt/acli.svg)](https://www.npmjs.com/package/@lifeprompt/acli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**acli** (Agent CLI) is a lightweight CLI protocol for AI agents built on top of MCP (Model Context Protocol).
+**ACLI** (Agent CLI) is a lightweight CLI protocol for AI agents built on top of MCP (Model Context Protocol).
 
-## Why acli?
+## Why ACLI?
 
-Traditional MCP tool definitions require extensive schema for each tool, consuming valuable context window space. acli solves this by:
+Traditional MCP tool definitions require extensive schema for each tool, consuming valuable context window space. ACLI solves this by:
 
 - **Single Tool per Domain**: One MCP tool (e.g., `math`, `calendar`) handles related commands
 - **Dynamic Discovery**: Agents learn commands via `help` and `schema`
@@ -250,7 +250,7 @@ These commands are automatically available:
 | `help <cmd>` | Show command details               |
 | `schema`   | JSON schema for all commands         |
 | `schema <cmd>` | JSON schema for specific command |
-| `version`  | Show acli version                    |
+| `version`  | Show ACLI version                    |
 
 ---
 
@@ -299,7 +299,7 @@ interface AcliErrorResponse {
 
 ## Security
 
-acli is designed with security in mind:
+ACLI is designed with security in mind:
 
 - **No Shell Execution**: Commands are parsed and executed directly in-process
 - **Forbidden Characters**: `` ; & | ` $ ( ) { } [ ] < > ! \ `` are blocked

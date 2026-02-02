@@ -1,6 +1,6 @@
-# Contributing to acli
+# Contributing to ACLI
 
-Thank you for your interest in contributing to acli!
+Thank you for your interest in contributing to ACLI!
 
 ## Development Setup
 

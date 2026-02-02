@@ -1,6 +1,6 @@
-# acli Architecture
+# ACLI Architecture
 
-This document describes the internal architecture and design philosophy of acli.
+This document describes the internal architecture and design philosophy of ACLI.
 
 ## Design Philosophy
 
@@ -8,14 +8,14 @@ This document describes the internal architecture and design philosophy of acli.
 
 Traditional MCP requires each tool to have a complete JSON Schema definition. For complex systems with many operations, this consumes significant context window space.
 
-**acli's approach:**
+**ACLI's approach:**
 - One MCP tool per domain (e.g., `calendar`, `math`, `google_ads`)
 - Commands are discovered dynamically via `help` command
 - Detailed schemas available on-demand via `schema` command
 
 ### 2. Shell-less Security
 
-Unlike traditional CLIs that invoke shell commands, acli parses and executes commands directly in-process.
+Unlike traditional CLIs that invoke shell commands, ACLI parses and executes commands directly in-process.
 
 **Security measures:**
 - Forbidden characters: `` ; & | ` $ ( ) { } [ ] < > ! \ ``
@@ -25,7 +25,7 @@ Unlike traditional CLIs that invoke shell commands, acli parses and executes com
 
 ### 3. Dual Interface
 
-acli works both as:
+ACLI works both as:
 - **MCP Tool**: Registered with MCP server for AI agent access
 - **CLI Binary**: Executable from terminal for human use
 
@@ -140,7 +140,7 @@ Parses tokens into typed arguments.
 
 ### MCP Integration (`src/mcp/tool.ts`)
 
-Registers acli as an MCP tool.
+Registers ACLI as an MCP tool.
 
 ```typescript
 registerAcli(server, commands, {

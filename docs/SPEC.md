@@ -1,18 +1,18 @@
-# acli - Agent CLI Specification
+# ACLI - Agent CLI Specification
 
-**Version:** 0.1.0 (Draft)  
-**Date:** 2026-02-02  
+**Version:** 0.1.0 (Draft)
+**Date:** 2026-02-02
 **Status:** Proposal
 
 ---
 
 ## 1. Overview
 
-### 1.1 What is acli?
+### 1.1 What is ACLI?
 
-**acli** (Agent CLI) is a lightweight CLI-based protocol for AI agents to operate tools. Built on top of MCP (Model Context Protocol), it provides a CLI-style command interface through a single MCP tool definition.
+**ACLI** (Agent CLI) is a lightweight CLI-based protocol for AI agents to operate tools. Built on top of MCP (Model Context Protocol), it provides a CLI-style command interface through a single MCP tool definition.
 
-**Pronunciation:** A-C-L-I / Agent CLI  
+**Pronunciation:** A-C-L-I / Agent CLI
 **npm:** `@lifeprompt/acli`
 
 ### 1.2 Design Goals
@@ -37,7 +37,7 @@
 ┌─────────────────────────────────────────────────────────────┐
 │                    MCP (Model Context Protocol)             │
 │  ┌───────────────────────────────────────────────────────┐  │
-│  │                 acli Tool ("cli")                     │  │
+│  │                 ACLI Tool ("cli")                     │  │
 │  │  ┌─────────────────────────────────────────────────┐  │  │
 │  │  │              CLI Gateway (Parser/Guard)         │  │  │
 │  │  └─────────────────────────────────────────────────┘  │  │
@@ -57,7 +57,7 @@
 | **mcpc** | MCP CLI client (external) | Similar concept, different approach |
 | **A2A** | Agent-to-Agent | Upper layer (no overlap) |
 | **Agent Client Protocol** | IDE ↔ Agent | Different domain |
-| **acli (this)** | In-MCP CLI Gateway | **Unique position** |
+| **ACLI (this)** | In-MCP CLI Gateway | **Unique position** |
 
 ---
 
@@ -126,7 +126,7 @@ Input: "calendar events --today --max 10"
 
 ### 3.1 Tool Schema
 
-All acli implementations MUST expose the following MCP tool definition.
+All ACLI implementations MUST expose the following MCP tool definition.
 
 ```json
 {
@@ -157,10 +157,10 @@ Traditional MCP approach defines each tool individually:
 // ... 97 more tools
 ```
 
-acli covers all functionality with a single tool definition:
+ACLI covers all functionality with a single tool definition:
 
 ```json
-// acli: 1 tool definition = minimal context
+// ACLI: 1 tool definition = minimal context
 { "name": "cli", "inputSchema": { "command": "string" } }
 ```
 
@@ -235,7 +235,7 @@ interface AcliParser {
   parse(input: string): ParseResult<string[]>
 }
 
-type ParseResult<T> = 
+type ParseResult<T> =
   | { ok: true; value: T }
   | { ok: false; error: AcliError }
 ```
@@ -330,10 +330,10 @@ interface AcliErrorResponse {
 
 ### 5.3 MCP Content Mapping
 
-acli responses are mapped to MCP's `CallToolResult`:
+ACLI responses are mapped to MCP's `CallToolResult`:
 
 ```typescript
-// acli Response → MCP CallToolResult
+// ACLI Response → MCP CallToolResult
 {
   content: [
     {
@@ -351,7 +351,7 @@ acli responses are mapped to MCP's `CallToolResult`:
 
 ### 6.1 Reserved Commands
 
-The following commands are reserved in all acli implementations and MUST be implemented.
+The following commands are reserved in all ACLI implementations and MUST be implemented.
 
 | Command | Description |
 |---------|-------------|
@@ -359,7 +359,7 @@ The following commands are reserved in all acli implementations and MUST be impl
 | `help <command>` | Display details for specific command |
 | `schema` | Output schemas for all commands in JSON format |
 | `schema <command>` | Output schema for specific command |
-| `version` | Output acli version and implementation info |
+| `version` | Output ACLI version and implementation info |
 
 ### 6.2 Help Response Format
 
@@ -374,7 +374,7 @@ Output:
 {
   "success": true,
   "data": {
-    "description": "acli-compatible CLI for Google Workspace operations",
+    "description": "ACLI-compatible CLI for Google Workspace operations",
     "commands": [
       { "name": "calendar", "description": "Manage calendar events" },
       { "name": "drive", "description": "Manage Google Drive files" },
@@ -662,7 +662,7 @@ Extensions can be declared via the `version` command:
 
 ### 10.1 Minimal Implementation
 
-Elements required for a minimal acli implementation:
+Elements required for a minimal ACLI implementation:
 
 1. **MCP Tool Registration** - Expose `cli` tool
 2. **Parser** - Secure tokenizer
