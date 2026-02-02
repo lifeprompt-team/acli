@@ -25,8 +25,11 @@ pnpm add @lifeprompt/acli
 
 ## Quick Start
 
+### With MCP SDK (Recommended)
+
 ```typescript
-import { createAcli, defineCommands } from '@lifeprompt/acli'
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
+import { registerAcli, defineCommands } from '@lifeprompt/acli'
 
 const commands = defineCommands({
   calendar: {
@@ -47,11 +50,22 @@ const commands = defineCommands({
   }
 })
 
-// Create MCP tool
+const server = new McpServer({ name: "my-server", version: "1.0.0" })
+
+// Register acli with MCP server
+registerAcli(server, commands)
+```
+
+### Standalone (Legacy)
+
+```typescript
+import { createAcli, defineCommands } from '@lifeprompt/acli'
+
+const commands = defineCommands({ /* ... */ })
 const cliTool = createAcli(commands)
 
-// Register with your MCP server
-mcpServer.registerTool(cliTool)
+// Use cliTool.execute() directly
+const result = await cliTool.execute({ command: "calendar events --today" })
 ```
 
 ## Usage
