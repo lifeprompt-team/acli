@@ -11,7 +11,7 @@ import {
 } from '../router/registry'
 
 // Version constant (avoid circular import)
-const VERSION = '0.3.0'
+const VERSION = '0.4.0'
 
 /**
  * Handle 'help' command
