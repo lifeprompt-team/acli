@@ -2,8 +2,8 @@
  * Argument parser
  */
 
-import { error, type AcliErrorResponse } from '../response/types'
-import type { ArgumentDefinition, ParsedArgs } from '../router/registry'
+import { error, type AcliErrorResponse } from '../response/types';
+import type { ArgumentDefinition, ParsedArgs } from '../router/registry';
 
 export type ParseArgsResult =
   | { ok: true; value: ParsedArgs }
@@ -181,13 +181,14 @@ function parseValue(
     case 'flag':
       return { value: true }
 
-    case 'datetime':
+    case 'datetime': {
       // Basic ISO8601 validation
       const date = new Date(value)
       if (isNaN(date.getTime())) {
         return { value: undefined, error: 'expected ISO8601 date' }
       }
       return { value: date }
+    }
 
     case 'array':
       return { value: value.split(',') }

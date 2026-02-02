@@ -4,10 +4,10 @@
 
 import { success, type AcliResponse } from '../response/types'
 import {
-  type CommandRegistry,
-  type CommandDefinition,
-  findCommand,
-  listCommands,
+    type CommandRegistry,
+    type CommandDefinition,
+    findCommand,
+    listCommands,
 } from '../router/registry'
 // Version constant (avoid circular import)
 const VERSION = '0.1.0'

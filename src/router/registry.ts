@@ -76,7 +76,7 @@ export function extractCommandPath(
 
   for (; i < tokens.length; i++) {
     const token = tokens[i]
-    
+
     // Stop if we hit an option
     if (token.startsWith('-')) break
 

@@ -5,10 +5,10 @@
 import { tokenize } from '../parser/tokenizer'
 import { error, type AcliResponse } from '../response/types'
 import {
-  type CommandRegistry,
-  extractCommandPath,
-  findCommand,
-  listCommands,
+    type CommandRegistry,
+    extractCommandPath,
+    findCommand,
+    listCommands,
 } from '../router/registry'
 import { handleHelp, handleSchema, handleVersion } from '../discovery'
 import { parseArgs } from '../parser/args'
@@ -109,7 +109,7 @@ export function createAcli(commands: CommandRegistry): MCPToolDefinition {
       try {
         const result = await commandDef.handler(argsResult.value)
         const duration = Date.now() - startTime
-        
+
         return {
           success: true,
           data: result,
