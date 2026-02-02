@@ -25,6 +25,17 @@ export function parseArgs(
     }
   }
 
+  // Build positional args map: position -> { name, def }
+  const positionalArgs = new Map<number, { name: string; def: ArgumentDefinition }>()
+  for (const [name, def] of Object.entries(argDefs)) {
+    if (def.positional !== undefined) {
+      positionalArgs.set(def.positional, { name, def })
+    }
+  }
+
+  // Collect positional values (non-option tokens)
+  const positionalValues: string[] = []
+
   // Parse tokens
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i]
@@ -105,19 +116,36 @@ export function parseArgs(
         result[def.name] = parsed.value
       }
     } else {
-      // Positional argument (not implemented yet)
-      // For now, ignore
+      // Positional argument - collect for later processing
+      positionalValues.push(token)
+    }
+  }
+
+  // Process positional arguments
+  for (let pos = 0; pos < positionalValues.length; pos++) {
+    const argInfo = positionalArgs.get(pos)
+    if (argInfo && result[argInfo.name] === undefined) {
+      const parsed = parseValue(positionalValues[pos], argInfo.def.type)
+      if (parsed.error) {
+        return {
+          ok: false,
+          error: error('VALIDATION_ERROR', `Invalid value at position ${pos}: ${parsed.error}`),
+        }
+      }
+      result[argInfo.name] = parsed.value
     }
   }
 
   // Check required args
   for (const [name, def] of Object.entries(argDefs)) {
     if (def.required && result[name] === undefined) {
+      const hint =
+        def.positional !== undefined
+          ? `Provide value at position ${def.positional} or use --${name} <value>`
+          : `Provide --${name} <value>`
       return {
         ok: false,
-        error: error('VALIDATION_ERROR', `Missing required argument: --${name}`, {
-          hint: `Provide --${name} <value>`,
-        }),
+        error: error('VALIDATION_ERROR', `Missing required argument: ${name}`, { hint }),
       }
     }
   }

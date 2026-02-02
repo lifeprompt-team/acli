@@ -17,6 +17,8 @@ export interface ArgumentDefinition {
   required?: boolean
   default?: unknown
   examples?: string[]
+  /** Position index for positional arguments (0-based). Allows `add 10 20` instead of `add --a 10 --b 20` */
+  positional?: number
 }
 
 export interface CommandDefinition {

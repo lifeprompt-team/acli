@@ -2,9 +2,15 @@
 /**
  * Example: math CLI tool using acli
  *
- * Usage:
+ * Usage (positional args):
+ *   node examples/math-cli.mjs add 10 20
+ *   node examples/math-cli.mjs multiply 5 7
+ *
+ * Usage (named args):
  *   node examples/math-cli.mjs add --a 10 --b 20
- *   node examples/math-cli.mjs multiply --a 5 --b 7
+ *   node examples/math-cli.mjs multiply -a 5 -b 7
+ *
+ * Help:
  *   node examples/math-cli.mjs help
  */
 
@@ -14,8 +20,8 @@ const commands = defineCommands({
   add: {
     description: 'Add two numbers',
     args: {
-      a: { type: 'number', required: true, description: 'First number' },
-      b: { type: 'number', required: true, description: 'Second number' },
+      a: { type: 'number', required: true, positional: 0, description: 'First number' },
+      b: { type: 'number', required: true, positional: 1, description: 'Second number' },
     },
     handler: async (args) => {
       const a = args.a
@@ -26,8 +32,8 @@ const commands = defineCommands({
   multiply: {
     description: 'Multiply two numbers',
     args: {
-      a: { type: 'number', required: true, description: 'First number' },
-      b: { type: 'number', required: true, description: 'Second number' },
+      a: { type: 'number', required: true, positional: 0, description: 'First number' },
+      b: { type: 'number', required: true, positional: 1, description: 'Second number' },
     },
     handler: async (args) => {
       const a = args.a

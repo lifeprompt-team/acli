@@ -159,4 +159,73 @@ describe('argument parser', () => {
       }
     })
   })
+
+  describe('positional arguments', () => {
+    it('parses positional arguments', () => {
+      const argDefs: Record<string, ArgumentDefinition> = {
+        a: { type: 'number', positional: 0 },
+        b: { type: 'number', positional: 1 },
+      }
+      const result = parseArgs(['10', '20'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.a).toBe(10)
+        expect(result.value.b).toBe(20)
+      }
+    })
+
+    it('mixes positional and named arguments', () => {
+      const argDefs: Record<string, ArgumentDefinition> = {
+        a: { type: 'number', positional: 0 },
+        b: { type: 'number', positional: 1 },
+        verbose: { type: 'flag' },
+      }
+      const result = parseArgs(['10', '20', '--verbose'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.a).toBe(10)
+        expect(result.value.b).toBe(20)
+        expect(result.value.verbose).toBe(true)
+      }
+    })
+
+    it('named arguments take precedence', () => {
+      const argDefs: Record<string, ArgumentDefinition> = {
+        a: { type: 'number', positional: 0 },
+        b: { type: 'number', positional: 1 },
+      }
+      // Named arg sets a=100, positional "5" tries to set a but skipped (already set)
+      // "20" sets b via positional: 1
+      const result = parseArgs(['--a', '100', '5', '20'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.a).toBe(100) // from --a
+        expect(result.value.b).toBe(20) // from position 1
+      }
+    })
+
+    it('validates required positional arguments', () => {
+      const argDefs: Record<string, ArgumentDefinition> = {
+        a: { type: 'number', positional: 0, required: true },
+        b: { type: 'number', positional: 1, required: true },
+      }
+      const result = parseArgs(['10'], argDefs)
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.error.error.code).toBe('VALIDATION_ERROR')
+        expect(result.error.error.hint).toContain('position')
+      }
+    })
+
+    it('handles positional type errors', () => {
+      const argDefs: Record<string, ArgumentDefinition> = {
+        count: { type: 'integer', positional: 0 },
+      }
+      const result = parseArgs(['not-a-number'], argDefs)
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.error.error.code).toBe('VALIDATION_ERROR')
+      }
+    })
+  })
 })
