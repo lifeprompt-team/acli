@@ -9,10 +9,10 @@ import { parseArgs } from '../parser/args'
 import { tokenize } from '../parser/tokenizer'
 import { type AcliResponse, error } from '../response/types'
 import {
-    type CommandRegistry,
-    extractCommandPath,
-    findCommand,
-    listCommands,
+  type CommandRegistry,
+  extractCommandPath,
+  findCommand,
+  listCommands,
 } from '../router/registry'
 
 /**
@@ -99,6 +99,29 @@ async function executeCommand(command: string, commands: CommandRegistry): Promi
 }
 
 /**
+ * Options for registerAcli
+ */
+export interface AcliToolOptions {
+  /** Tool name (default: 'cli') */
+  name: string
+  /** Base description (optional, will be enhanced with command list) */
+  description?: string
+}
+
+/**
+ * Generate tool description from commands
+ */
+function generateDescription(commands: CommandRegistry, baseDescription?: string): string {
+  const commandNames = Object.keys(commands)
+  const commandList = commandNames.join(', ')
+
+  if (baseDescription) {
+    return `${baseDescription} Commands: ${commandList}. Run 'help' for details.`
+  }
+  return `Commands: ${commandList}. Run 'help' for details.`
+}
+
+/**
  * Register acli tool with MCP Server
  *
  * @example
@@ -107,28 +130,44 @@ async function executeCommand(command: string, commands: CommandRegistry): Promi
  * import { registerAcli, defineCommands } from "@lifeprompt/acli";
  *
  * const commands = defineCommands({
- *   calendar: {
- *     description: "Manage calendar",
- *     subcommands: {
- *       events: {
- *         description: "List events",
- *         handler: async () => ({ events: [] })
- *       }
- *     }
- *   }
+ *   campaigns: {
+ *     description: "Manage campaigns",
+ *     subcommands: { list: { ... }, create: { ... } }
+ *   },
+ *   ads: { ... }
  * });
  *
  * const server = new McpServer({ name: "my-server", version: "1.0.0" });
- * registerAcli(server, commands);
+ *
+ * // With options (recommended)
+ * registerAcli(server, commands, {
+ *   name: "google_ads",
+ *   description: "Google Ads management."
+ * });
+ * // → description: "Google Ads management. Commands: campaigns, ads. Run 'help' for details."
+ *
+ * // With just name (backward compatible)
+ * registerAcli(server, commands, "google_ads");
+ * // → description: "Commands: campaigns, ads. Run 'help' for details."
  * ```
  */
-export function registerAcli(mcp: McpServer, commands: CommandRegistry, toolName = 'cli'): void {
+export function registerAcli(
+  mcp: McpServer,
+  commands: CommandRegistry,
+  options: string | AcliToolOptions = 'cli',
+): void {
+  // Normalize options
+  const opts: AcliToolOptions = typeof options === 'string' ? { name: options } : options
+
+  const toolName = opts.name
+  const description = generateDescription(commands, opts.description)
+
   mcp.registerTool(
     toolName,
     {
-      description: `Execute CLI command. Run 'help' for available commands.`,
+      description,
       inputSchema: {
-        command: z.string().describe("CLI command string (e.g., 'calendar events --today')"),
+        command: z.string().describe(`CLI command (e.g., '${Object.keys(commands)[0]} --help')`),
       },
     },
     async (params: { command: string }) => {
