@@ -2,8 +2,8 @@
  * Argument parser
  */
 
-import { type AcliErrorResponse, error } from '../response/types'
-import type { ArgumentDefinition, ParsedArgs } from '../router/registry'
+import { type AcliErrorResponse, error } from '../response/types';
+import type { ArgumentDefinition, ParsedArgs } from '../router/registry';
 
 export type ParseArgsResult =
   | { ok: true; value: ParsedArgs }
