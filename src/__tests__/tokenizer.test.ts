@@ -80,11 +80,11 @@ describe('tokenizer', () => {
     })
 
     it('handles backslash escape for special characters', () => {
-      // バックスラッシュは次の文字をリテラルとして扱う（シェルのエスケープシーケンス展開はしない）
+      // Backslash treats the next character as literal (no shell escape sequence expansion)
       const result = tokenize('echo "hello\\nworld"')
       expect(result.ok).toBe(true)
       if (result.ok) {
-        // \n は改行文字ではなく、リテラルの "n" として扱われる
+        // \n is treated as literal "n", not a newline character
         expect(result.value).toEqual(['echo', 'hellonworld'])
       }
     })
@@ -99,7 +99,7 @@ describe('tokenizer', () => {
   })
 
   describe('special characters - treated as plain text', () => {
-    // ACLIはシェルを使用しないため、これらの文字は単なるテキストとして扱われる
+    // ACLI doesn't use shell, so these characters are treated as plain text
     it('treats semicolon as plain text', () => {
       const result = tokenize('foo; rm -rf /')
       expect(result.ok).toBe(true)

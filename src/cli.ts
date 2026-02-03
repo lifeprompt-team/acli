@@ -51,8 +51,17 @@ export async function runCli(options: CliOptions): Promise<void> {
   }
 
   // Handle --help flag or empty args
-  if (args.includes('--help') || args.includes('-h') || args.length === 0) {
+  if (args.length === 0) {
     console.log(JSON.stringify(handleHelp(commands, []), null, 2))
+    process.exit(0)
+  }
+
+  // Handle --help or -h anywhere in args
+  const helpIndex = args.findIndex((a) => a === '--help' || a === '-h')
+  if (helpIndex !== -1) {
+    // Tokens before --help are the command path
+    const commandPath = args.slice(0, helpIndex)
+    console.log(JSON.stringify(handleHelp(commands, commandPath), null, 2))
     process.exit(0)
   }
 

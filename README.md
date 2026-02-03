@@ -395,6 +395,15 @@ import { arg, defineCommand, cmd } from "@lifeprompt/acli"
 
 ---
 
+## Documentation
+
+- [Examples](./examples/README.md) - Step-by-step examples
+- [AGENTS.md](./AGENTS.md) - Guide for coding agents (Cursor, Copilot, etc.) to build ACLI tools
+- [Architecture](./docs/ARCHITECTURE.md) - Internal design and module structure
+- [Specification](./docs/SPEC.md) - Full protocol specification
+
+---
+
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup, release flow, and guidelines.
