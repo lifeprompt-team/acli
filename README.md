@@ -388,6 +388,12 @@ import { arg, defineCommands } from "@lifeprompt/acli"
 
 ---
 
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup, release flow, and guidelines.
+
+---
+
 ## License
 
 MIT
