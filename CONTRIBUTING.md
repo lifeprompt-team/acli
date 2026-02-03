@@ -71,36 +71,43 @@ export const VERSION =
 
 ## Release Flow
 
-### 1. Update version
+### Prerequisites
 
 ```bash
+# npm にログイン済みであることを確認
+npm whoami
+```
+
+### Full Release Flow
+
+```bash
+# 1. PR をマージ（GitHub UI または CLI）
+gh pr merge <PR_NUMBER> --squash
+
+# 2. main に切り替えて最新を取得
+git checkout main
+git pull
+
+# 3. バージョンを更新（自動で commit + tag 作成）
 npm version patch   # 0.6.0 → 0.6.1 (bug fixes)
 npm version minor   # 0.6.0 → 0.7.0 (new features)
 npm version major   # 0.6.0 → 1.0.0 (breaking changes)
-```
 
-This automatically:
-- Updates `package.json`
-- Creates a git commit
-- Creates a git tag (e.g., `v0.7.0`)
-
-### 2. Push to remote
-
-```bash
+# 4. リモートに push
 git push && git push --tags
-```
 
-### 3. Create GitHub Release (optional)
+# 5. npm に公開
+npm publish
 
-```bash
+# 6. GitHub Release を作成（オプション）
 gh release create v0.7.0 --generate-notes
 ```
 
-### 4. Publish to npm
+### What `npm version` does
 
-```bash
-npm publish
-```
+- Updates `package.json` version
+- Creates a git commit with message `v0.7.0`
+- Creates a git tag `v0.7.0`
 
 ---
 
