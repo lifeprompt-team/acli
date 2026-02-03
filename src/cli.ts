@@ -29,17 +29,16 @@ export interface CliOptions {
  *
  * @example
  * ```typescript
- * import { runCli, defineCommands } from '@lifeprompt/acli';
+ * import { z } from 'zod';
+ * import { runCli, defineCommand, arg } from '@lifeprompt/acli';
  *
- * const commands = defineCommands({
- *   greet: {
- *     description: 'Say hello',
- *     args: { name: { type: 'string', required: true } },
- *     handler: async ({ name }) => ({ message: `Hello, ${name}!` })
- *   }
+ * const greet = defineCommand({
+ *   description: 'Say hello',
+ *   args: { name: arg(z.string()) },
+ *   handler: async ({ name }) => ({ message: `Hello, ${name}!` })
  * });
  *
- * runCli({ commands });
+ * runCli({ commands: { greet } });
  * ```
  */
 export async function runCli(options: CliOptions): Promise<void> {

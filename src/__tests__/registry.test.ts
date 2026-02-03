@@ -2,14 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import {
   arg,
-  defineCommands,
+  type CommandRegistry,
   extractCommandPath,
   findCommand,
   listCommands,
 } from '../router/registry'
 
 describe('command registry', () => {
-  const testCommands = defineCommands({
+  // Commands with subcommands can be defined as plain objects
+  const testCommands: CommandRegistry = {
     calendar: {
       description: 'Manage calendar',
       subcommands: {
@@ -30,7 +31,7 @@ describe('command registry', () => {
       description: 'Manage tasks',
       handler: async () => ({ tasks: [] }),
     },
-  })
+  }
 
   describe('findCommand', () => {
     it('finds top-level command', () => {

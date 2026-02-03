@@ -33,26 +33,28 @@ pnpm add @lifeprompt/acli zod
 ```typescript
 import { z } from "zod"
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
-import { registerAcli, defineCommands, arg } from "@lifeprompt/acli"
+import { registerAcli, defineCommand, arg } from "@lifeprompt/acli"
 
-const commands = defineCommands({
-  add: {
-    description: "Add two numbers",
-    args: {
-      a: arg(z.coerce.number(), { positional: 0 }),
-      b: arg(z.coerce.number(), { positional: 1 }),
-    },
-    handler: async ({ a, b }) => ({ result: a + b }),
+// Use defineCommand() for full type inference in handlers
+const add = defineCommand({
+  description: "Add two numbers",
+  args: {
+    a: arg(z.coerce.number(), { positional: 0 }),
+    b: arg(z.coerce.number(), { positional: 1 }),
   },
-  multiply: {
-    description: "Multiply two numbers",
-    args: {
-      a: arg(z.coerce.number(), { positional: 0 }),
-      b: arg(z.coerce.number(), { positional: 1 }),
-    },
-    handler: async ({ a, b }) => ({ result: a * b }),
-  },
+  handler: async ({ a, b }) => ({ result: a + b }),  // a, b are inferred as number
 })
+
+const multiply = defineCommand({
+  description: "Multiply two numbers",
+  args: {
+    a: arg(z.coerce.number(), { positional: 0 }),
+    b: arg(z.coerce.number(), { positional: 1 }),
+  },
+  handler: async ({ a, b }) => ({ result: a * b }),
+})
+
+const commands = { add, multiply }
 
 const server = new McpServer({ name: "my-server", version: "1.0.0" })
 
@@ -95,19 +97,17 @@ Once registered, AI agents (like Claude) call the tool with a `command` string:
 ```typescript
 #!/usr/bin/env node
 import { z } from "zod"
-import { defineCommands, runCli, arg } from "@lifeprompt/acli"
+import { defineCommand, runCli, arg } from "@lifeprompt/acli"
 
-const commands = defineCommands({
-  greet: {
-    description: "Say hello",
-    args: {
-      name: arg(z.string(), { positional: 0 }),
-    },
-    handler: async ({ name }) => ({ message: `Hello, ${name}!` }),
+const greet = defineCommand({
+  description: "Say hello",
+  args: {
+    name: arg(z.string(), { positional: 0 }),
   },
+  handler: async ({ name }) => ({ message: `Hello, ${name}!` }),  // name is inferred as string
 })
 
-runCli({ commands })
+runCli({ commands: { greet } })
 ```
 
 ```bash
@@ -176,7 +176,7 @@ type MyArgs = InferArgs<typeof myArgs>
 
 ```typescript
 import { z } from "zod"
-import { defineCommands, arg, type InferArgs } from "@lifeprompt/acli"
+import { defineCommand, arg, type InferArgs } from "@lifeprompt/acli"
 
 interface CommandDefinition<TArgs extends ArgsDefinition> {
   description: string                        // Required
@@ -190,40 +190,40 @@ interface CommandDefinition<TArgs extends ArgsDefinition> {
 
 ```typescript
 import { z } from "zod"
-import { defineCommands, arg } from "@lifeprompt/acli"
+import { defineCommand, arg } from "@lifeprompt/acli"
 
-const commands = defineCommands({
-  calendar: {
-    description: "Calendar management",
-    subcommands: {
-      events: {
-        description: "Manage events",
-        subcommands: {
-          list: {
-            description: "List events",
-            args: {
-              from: arg(z.coerce.date().optional()),
-              limit: arg(z.coerce.number().int().default(10)),
-            },
-            handler: async ({ from, limit }) => {
-              return { events: await fetchEvents({ from, limit }) }
-            },
+const calendar = defineCommand({
+  description: "Calendar management",
+  subcommands: {
+    events: {
+      description: "Manage events",
+      subcommands: {
+        list: {
+          description: "List events",
+          args: {
+            from: arg(z.coerce.date().optional()),
+            limit: arg(z.coerce.number().int().default(10)),
           },
-          create: {
-            description: "Create event",
-            args: {
-              title: arg(z.string().min(1)),
-              date: arg(z.coerce.date()),
-            },
-            handler: async ({ title, date }) => {
-              return { event: await createEvent({ title, date }) }
-            },
+          handler: async ({ from, limit }) => {
+            return { events: await fetchEvents({ from, limit }) }
+          },
+        },
+        create: {
+          description: "Create event",
+          args: {
+            title: arg(z.string().min(1)),
+            date: arg(z.coerce.date()),
+          },
+          handler: async ({ title, date }) => {
+            return { event: await createEvent({ title, date }) }
           },
         },
       },
     },
   },
 })
+
+// Use directly: registerAcli(server, { calendar }, { name: "cli" })
 ```
 
 Usage:
@@ -239,16 +239,16 @@ calendar events create --title "Meeting" --date 2026-02-02T10:00:00Z
 Positional arguments allow cleaner syntax:
 
 ```typescript
-const commands = defineCommands({
-  add: {
-    description: "Add numbers",
-    args: {
-      a: arg(z.coerce.number(), { positional: 0 }),
-      b: arg(z.coerce.number(), { positional: 1 }),
-    },
-    handler: async ({ a, b }) => ({ result: a + b }),
+const add = defineCommand({
+  description: "Add numbers",
+  args: {
+    a: arg(z.coerce.number(), { positional: 0 }),
+    b: arg(z.coerce.number(), { positional: 1 }),
   },
+  handler: async ({ a, b }) => ({ result: a + b }),
 })
+
+// Use: registerAcli(server, { add }, { name: "math" })
 ```
 
 All syntaxes work:
@@ -383,7 +383,7 @@ import type {
 } from "@lifeprompt/acli"
 
 // Helper functions
-import { arg, defineCommands } from "@lifeprompt/acli"
+import { arg, defineCommand } from "@lifeprompt/acli"
 ```
 
 ---

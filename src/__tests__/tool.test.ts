@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { type CallToolResult, createAcli, type TextContent } from '../mcp/tool'
-import { arg, defineCommands } from '../router/registry'
+import { arg, type CommandRegistry, defineCommand } from '../router/registry'
 
 /**
  * Helper to extract JSON from MCP response
@@ -17,14 +17,37 @@ function extractJson(response: CallToolResult): unknown {
 }
 
 describe('MCP tool', () => {
-  const commands = defineCommands({
-    echo: {
-      description: 'Echo back input',
-      args: {
-        message: arg(z.string()),
-      },
-      handler: async ({ message }) => ({ echoed: message }),
+  // Use defineCommand for type inference
+  const echo = defineCommand({
+    description: 'Echo back input',
+    args: {
+      message: arg(z.string()),
     },
+    handler: async ({ message }) => ({ echoed: message }),
+  })
+
+  const fail = defineCommand({
+    description: 'Always fails',
+    args: {},
+    handler: async () => {
+      throw new Error('Intentional failure')
+    },
+  })
+
+  const native = defineCommand({
+    description: 'Returns MCP native format',
+    args: {},
+    handler: async () => ({
+      content: [
+        { type: 'text' as const, text: 'Hello from native' },
+        { type: 'text' as const, text: 'Second content' },
+      ],
+    }),
+  })
+
+  // Commands with subcommands use CommandRegistry type
+  const commands: CommandRegistry = {
+    echo,
     greet: {
       description: 'Greet someone',
       subcommands: {
@@ -37,22 +60,9 @@ describe('MCP tool', () => {
         },
       },
     },
-    fail: {
-      description: 'Always fails',
-      handler: async () => {
-        throw new Error('Intentional failure')
-      },
-    },
-    native: {
-      description: 'Returns MCP native format',
-      handler: async () => ({
-        content: [
-          { type: 'text' as const, text: 'Hello from native' },
-          { type: 'text' as const, text: 'Second content' },
-        ],
-      }),
-    },
-  })
+    fail,
+    native,
+  }
 
   const tool = createAcli(commands)
 

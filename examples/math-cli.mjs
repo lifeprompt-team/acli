@@ -14,33 +14,29 @@
  *   node examples/math-cli.mjs help
  */
 
-import { defineCommands, runCli } from '../dist/index.js'
+import { z } from 'zod'
+import { arg, defineCommand, runCli } from '../dist/index.js'
 
-const commands = defineCommands({
-  add: {
-    description: 'Add two numbers',
-    args: {
-      a: { type: 'number', required: true, positional: 0, description: 'First number' },
-      b: { type: 'number', required: true, positional: 1, description: 'Second number' },
-    },
-    handler: async (args) => {
-      const a = args.a
-      const b = args.b
-      return { result: a + b, expression: `${a} + ${b} = ${a + b}` }
-    },
+const add = defineCommand({
+  description: 'Add two numbers',
+  args: {
+    a: arg(z.coerce.number(), { positional: 0, description: 'First number' }),
+    b: arg(z.coerce.number(), { positional: 1, description: 'Second number' }),
   },
-  multiply: {
-    description: 'Multiply two numbers',
-    args: {
-      a: { type: 'number', required: true, positional: 0, description: 'First number' },
-      b: { type: 'number', required: true, positional: 1, description: 'Second number' },
-    },
-    handler: async (args) => {
-      const a = args.a
-      const b = args.b
-      return { result: a * b, expression: `${a} × ${b} = ${a * b}` }
-    },
+  handler: async ({ a, b }) => {
+    return { result: a + b, expression: `${a} + ${b} = ${a + b}` }
   },
 })
 
-runCli({ commands })
+const multiply = defineCommand({
+  description: 'Multiply two numbers',
+  args: {
+    a: arg(z.coerce.number(), { positional: 0, description: 'First number' }),
+    b: arg(z.coerce.number(), { positional: 1, description: 'Second number' }),
+  },
+  handler: async ({ a, b }) => {
+    return { result: a * b, expression: `${a} × ${b} = ${a * b}` }
+  },
+})
+
+runCli({ commands: { add, multiply } })

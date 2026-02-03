@@ -73,13 +73,34 @@ export interface CommandDefinition<TArgs extends ArgsDefinition = ArgsDefinition
   handler?: (args: InferArgs<TArgs>) => Promise<unknown>
 }
 
-export type CommandRegistry = Record<string, CommandDefinition>
+// biome-ignore lint/suspicious/noExplicitAny: Allows type-safe defineCommand results to be used in registry
+export type CommandRegistry = Record<string, CommandDefinition<any>>
 
 /**
- * Define commands with type safety
+ * Define a command with full type inference for handler args
+ *
+ * @example
+ * import { z } from "zod"
+ * import { defineCommand, arg, registerAcli } from "@lifeprompt/acli"
+ *
+ * const add = defineCommand({
+ *   description: 'Add two numbers',
+ *   args: {
+ *     a: arg(z.coerce.number()),
+ *     b: arg(z.coerce.number()),
+ *   },
+ *   handler: async ({ a, b }) => ({ result: a + b }),  // a, b are inferred as number
+ * })
+ *
+ * const multiply = defineCommand({ ... })
+ *
+ * // Pass commands directly to registerAcli
+ * registerAcli(server, { add, multiply }, { name: "math" })
  */
-export function defineCommands<T extends CommandRegistry>(commands: T): T {
-  return commands
+export function defineCommand<TArgs extends ArgsDefinition>(
+  command: CommandDefinition<TArgs>,
+): CommandDefinition<TArgs> {
+  return command
 }
 
 /**

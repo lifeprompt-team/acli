@@ -30,4 +30,4 @@ export type {
   CommandRegistry,
   InferArgs,
 } from './router/registry'
-export { arg, defineCommands } from './router/registry'
+export { arg, defineCommand } from './router/registry'

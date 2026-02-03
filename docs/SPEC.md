@@ -695,11 +695,12 @@ Elements required for a minimal ACLI implementation:
 ### 10.3 Usage Example
 
 ```typescript
-import { createAcli, defineCommands } from '@lifeprompt/acli'
+import { createAcli, defineCommand, arg } from '@lifeprompt/acli'
 
 // Define commands
-const commands = defineCommands({
-  calendar: {
+const calendar = defineCommand({
+  description: "Calendar commands",
+  subcommands: {
     events: {
       description: "List calendar events",
       arguments: [

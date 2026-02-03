@@ -5,7 +5,7 @@ export {
   arg,
   type CommandDefinition,
   type CommandRegistry,
-  defineCommands,
+  defineCommand,
   extractCommandPath,
   findCommand,
   type InferArgs,

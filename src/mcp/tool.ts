@@ -81,29 +81,31 @@ function generateDescription(commands: CommandRegistry, baseDescription?: string
  *
  * @example
  * ```typescript
+ * import { z } from "zod";
  * import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
- * import { registerAcli, defineCommands } from "@lifeprompt/acli";
+ * import { registerAcli, defineCommand, arg } from "@lifeprompt/acli";
  *
- * const commands = defineCommands({
- *   simple: {
- *     description: "Returns simple object",
- *     handler: async () => ({ result: 123 }),
- *     // → { content: [{ type: "text", text: '{"result":123}' }] }
- *   },
- *   native: {
- *     description: "Returns MCP native format",
- *     handler: async () => ({
- *       content: [
- *         { type: "text", text: "Hello" },
- *         { type: "image", data: "base64...", mimeType: "image/png" },
- *       ]
- *     }),
- *     // → passed through as-is
- *   },
+ * const simple = defineCommand({
+ *   description: "Returns simple object",
+ *   args: { n: arg(z.coerce.number()) },
+ *   handler: async ({ n }) => ({ result: n * 2 }),
+ *   // → { content: [{ type: "text", text: '{"result":246}' }] }
+ * });
+ *
+ * const native = defineCommand({
+ *   description: "Returns MCP native format",
+ *   args: {},
+ *   handler: async () => ({
+ *     content: [
+ *       { type: "text", text: "Hello" },
+ *       { type: "image", data: "base64...", mimeType: "image/png" },
+ *     ]
+ *   }),
+ *   // → passed through as-is
  * });
  *
  * const server = new McpServer({ name: "my-server", version: "1.0.0" });
- * registerAcli(server, commands, { name: "my_tool", description: "My tool." });
+ * registerAcli(server, { simple, native }, { name: "my_tool", description: "My tool." });
  * ```
  */
 export function registerAcli(

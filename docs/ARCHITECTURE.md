@@ -124,7 +124,7 @@ interface CommandDefinition {
 ```
 
 **Key functions:**
-- `defineCommands()`: Type-safe registry builder
+- `defineCommand()`: Type-safe command definition with full type inference
 - `findCommand()`: Route tokens to command definition
 - `extractCommandPath()`: Separate command path from arguments
 - `listCommands()`: Enumerate all commands (for help)
@@ -182,9 +182,9 @@ runCli({ commands })
 
 See `examples/math-cli.mjs` for a complete example.
 
-1. Import `defineCommands` and `runCli` (or `registerAcli`)
-2. Define commands with handlers
-3. Call `runCli({ commands })` or `registerAcli(server, commands, options)`
+1. Import `defineCommand`, `arg`, and `runCli` (or `registerAcli`)
+2. Define commands with `defineCommand()` and handlers
+3. Call `runCli({ commands: { cmd1, cmd2 } })` or `registerAcli(server, { cmd1, cmd2 }, options)`
 
 ---
 
