@@ -2,13 +2,14 @@
  * Discovery commands: help, schema, version
  */
 
+import { z } from 'zod'
 import { VERSION } from '../index'
-import {
-  type CommandDefinition,
-  type CommandRegistry,
-  findCommand,
-  listCommands,
+import type {
+  ArgSchema,
+  CommandDefinition,
+  CommandRegistry,
 } from '../router/registry'
+import { findCommand, listCommands } from '../router/registry'
 
 /**
  * Help response type
@@ -26,6 +27,7 @@ export interface HelpResponse {
     required: boolean
     default?: unknown
     description?: string
+    positional?: number
     examples?: string[]
   }>
 }
@@ -124,6 +126,57 @@ export function handleVersion(): VersionResponse {
   }
 }
 
+/**
+ * Extract schema info from a Zod schema
+ */
+function getSchemaInfo(argSchema: ArgSchema): {
+  type: string
+  required: boolean
+  default?: unknown
+} {
+  let schema = argSchema.schema
+  let isRequired = true
+  let defaultValue: unknown = undefined
+
+  // Unwrap ZodOptional
+  if (schema instanceof z.ZodOptional) {
+    isRequired = false
+    schema = schema._def.innerType
+  }
+
+  // Unwrap ZodDefault
+  if (schema instanceof z.ZodDefault) {
+    isRequired = false
+    defaultValue = schema._def.defaultValue()
+    schema = schema._def.innerType
+  }
+
+  // Unwrap ZodEffects (preprocess, transform, refine)
+  while (schema instanceof z.ZodEffects) {
+    schema = schema._def.schema
+  }
+
+  // Get type name
+  const type = getZodTypeName(schema)
+
+  return { type, required: isRequired, default: defaultValue }
+}
+
+/**
+ * Get a human-readable type name from a Zod schema
+ */
+function getZodTypeName(schema: z.ZodType): string {
+  if (schema instanceof z.ZodString) return 'string'
+  if (schema instanceof z.ZodNumber) return 'number'
+  if (schema instanceof z.ZodBoolean) return 'boolean'
+  if (schema instanceof z.ZodDate) return 'datetime'
+  if (schema instanceof z.ZodArray) return 'array'
+  if (schema instanceof z.ZodEnum) return 'enum'
+  if (schema instanceof z.ZodLiteral) return 'literal'
+  if (schema instanceof z.ZodUnion) return 'union'
+  return 'unknown'
+}
+
 function formatCommandHelp(name: string, def: CommandDefinition): HelpResponse {
   const result: HelpResponse = {
     description: def.description,
@@ -138,14 +191,18 @@ function formatCommandHelp(name: string, def: CommandDefinition): HelpResponse {
   }
 
   if (def.args) {
-    result.arguments = Object.entries(def.args).map(([k, v]) => ({
-      name: `--${k}`,
-      type: v.type,
-      required: v.required ?? false,
-      default: v.default,
-      description: v.description,
-      examples: v.examples,
-    }))
+    result.arguments = Object.entries(def.args).map(([k, v]) => {
+      const info = getSchemaInfo(v)
+      return {
+        name: `--${k}`,
+        type: info.type,
+        required: info.required,
+        ...(info.default !== undefined && { default: info.default }),
+        ...(v.meta.description && { description: v.meta.description }),
+        ...(v.meta.positional !== undefined && { positional: v.meta.positional }),
+        ...(v.meta.examples && { examples: v.meta.examples }),
+      }
+    })
   }
 
   return result
@@ -159,13 +216,14 @@ function buildInputSchema(def: CommandDefinition): Record<string, unknown> {
   const properties: Record<string, unknown> = {}
   const required: string[] = []
 
-  for (const [name, argDef] of Object.entries(def.args)) {
+  for (const [name, argSchema] of Object.entries(def.args)) {
+    const info = getSchemaInfo(argSchema)
     properties[name] = {
-      type: mapTypeToJsonSchema(argDef.type),
-      description: argDef.description,
-      ...(argDef.default !== undefined && { default: argDef.default }),
+      type: mapTypeToJsonSchema(info.type),
+      ...(argSchema.meta.description && { description: argSchema.meta.description }),
+      ...(info.default !== undefined && { default: info.default }),
     }
-    if (argDef.required) {
+    if (info.required) {
       required.push(name)
     }
   }
@@ -193,12 +251,9 @@ function buildSchemaTree(registry: CommandRegistry): Record<string, unknown> {
 
 function mapTypeToJsonSchema(type: string): string {
   switch (type) {
-    case 'integer':
-      return 'integer'
     case 'number':
       return 'number'
     case 'boolean':
-    case 'flag':
       return 'boolean'
     case 'datetime':
       return 'string' // with format: date-time

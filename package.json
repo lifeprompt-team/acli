@@ -1,6 +1,6 @@
 {
   "name": "@lifeprompt/acli",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "type": "module",
   "description": "acli - Agent CLI protocol for AI agents on MCP",
   "main": "dist/index.cjs",
@@ -73,7 +73,8 @@
     "@types/node": "^20.0.0",
     "tsup": "^8.0.0",
     "typescript": "^5.0.0",
-    "vitest": "^1.0.0"
+    "vitest": "^1.0.0",
+    "zod": "^3.24.2"
   },
   "engines": {
     "node": ">=18.0.0"

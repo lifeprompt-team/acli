@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { type CallToolResult, createAcli } from '../mcp/tool'
-import { defineCommands } from '../router/registry'
+import { z } from 'zod'
+import { type CallToolResult, type TextContent, createAcli } from '../mcp/tool'
+import { arg, defineCommands } from '../router/registry'
 
 /**
  * Helper to extract JSON from MCP response
  */
 function extractJson(response: CallToolResult): unknown {
-  const textContent = response.content.find((c) => c.type === 'text')
-  if (!textContent || textContent.type !== 'text') {
+  const textContent = response.content.find(
+    (c: { type: string }): c is TextContent => c.type === 'text',
+  )
+  if (!textContent) {
     throw new Error('No text content found')
   }
   return JSON.parse(textContent.text)
@@ -18,7 +21,7 @@ describe('MCP tool', () => {
     echo: {
       description: 'Echo back input',
       args: {
-        message: { type: 'string', required: true },
+        message: arg(z.string()),
       },
       handler: async ({ message }) => ({ echoed: message }),
     },
@@ -28,7 +31,7 @@ describe('MCP tool', () => {
         hello: {
           description: 'Say hello',
           args: {
-            name: { type: 'string', default: 'World' },
+            name: arg(z.string().default('World')),
           },
           handler: async ({ name }) => ({ greeting: `Hello, ${name}!` }),
         },
