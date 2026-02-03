@@ -10,71 +10,40 @@
 
 ## Why ACLI?
 
-Traditional MCP tool definitions require verbose JSON schemas for each tool, consuming valuable context window space. ACLI solves this:
+Traditional MCP registers each function as a separate tool, which consumes AI context window space as the number of tools grows. ACLI consolidates related commands into a single domain tool:
 
 | | Traditional MCP | ACLI |
 |---|-----------------|------|
-| **Code** | ~40 lines per 2 tools | ~15 lines |
-| **Schema** | Manual JSON Schema | Zod-based inference |
-| **Tools** | 1 tool per function | 1 tool per domain |
-| **Type Safety** | Runtime only | Full TypeScript inference |
+| **Tool count** | 1 tool per function | 1 tool per domain |
+| **Context usage** | Grows with each tool | Fixed + dynamic discovery |
+| **Invocation** | `{"a": 10, "b": 20}` | `add 10 20` (CLI-like) |
 
 **Key benefits:**
 
 - **Single Tool per Domain**: One MCP tool (e.g., `math`, `calendar`) handles related commands
-- **Dynamic Discovery**: Agents learn commands via `help` and `schema`
+- **Dynamic Discovery**: Agents learn commands via `help` and `schema` at runtime
+- **CLI-like Syntax**: Positional arguments enable concise invocations
 - **Shell-less Security**: No shell execution, preventing injection attacks
 - **Type-safe Arguments**: Zod-based validation with full TypeScript inference
-- **CLI & MCP Dual Support**: Use as MCP tool or standalone CLI
 
 <details>
-<summary><strong>View full code comparison</strong></summary>
+<summary><strong>View code comparison</strong></summary>
 
-**Traditional MCP** — verbose schema definitions:
+**Traditional MCP** — each function is a separate tool:
 
 ```typescript
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: [
-    {
-      name: "add",
-      description: "Add two numbers",
-      inputSchema: {
-        type: "object",
-        properties: {
-          a: { type: "number", description: "First number" },
-          b: { type: "number", description: "Second number" }
-        },
-        required: ["a", "b"]
-      }
-    },
-    {
-      name: "multiply",
-      description: "Multiply two numbers",
-      inputSchema: {
-        type: "object",
-        properties: {
-          a: { type: "number", description: "First number" },
-          b: { type: "number", description: "Second number" }
-        },
-        required: ["a", "b"]
-      }
-    }
-  ]
-}));
-
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
-  if (name === "add") {
-    return { content: [{ type: "text", text: JSON.stringify({ result: args.a + args.b }) }] };
-  }
-  if (name === "multiply") {
-    return { content: [{ type: "text", text: JSON.stringify({ result: args.a * args.b }) }] };
-  }
-  throw new Error("Unknown tool");
+// Two separate tools registered
+server.tool("add", { a: z.number(), b: z.number() }, async ({ a, b }) => {
+  return { content: [{ type: "text", text: JSON.stringify({ result: a + b }) }] };
 });
+
+server.tool("multiply", { a: z.number(), b: z.number() }, async ({ a, b }) => {
+  return { content: [{ type: "text", text: JSON.stringify({ result: a * b }) }] };
+});
+// → AI sees 2 tools in context, each with full schema
 ```
 
-**ACLI** — same functionality, type-safe and concise:
+**ACLI** — commands grouped under one domain tool:
 
 ```typescript
 const add = defineCommand({
@@ -90,6 +59,7 @@ const multiply = defineCommand({
 })
 
 registerAcli(server, { add, multiply }, { name: "math" })
+// → AI sees 1 "math" tool, discovers commands via "help"
 ```
 
 </details>
