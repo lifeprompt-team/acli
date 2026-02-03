@@ -4,11 +4,7 @@
 
 import { z } from 'zod'
 import { VERSION } from '../index'
-import type {
-  ArgSchema,
-  CommandDefinition,
-  CommandRegistry,
-} from '../router/registry'
+import type { ArgSchema, CommandDefinition, CommandRegistry } from '../router/registry'
 import { findCommand, listCommands } from '../router/registry'
 
 /**
@@ -136,7 +132,7 @@ function getSchemaInfo(argSchema: ArgSchema): {
 } {
   let schema = argSchema.schema
   let isRequired = true
-  let defaultValue: unknown = undefined
+  let defaultValue: unknown
 
   // Unwrap ZodOptional
   if (schema instanceof z.ZodOptional) {

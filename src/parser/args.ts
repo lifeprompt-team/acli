@@ -2,9 +2,9 @@
  * Argument parser using Zod schemas
  */
 
-import { z } from 'zod';
-import { type AcliError, error } from '../response/types';
-import type { ArgSchema, ArgsDefinition, InferArgs } from '../router/registry';
+import { z } from 'zod'
+import { type AcliError, error } from '../response/types'
+import type { ArgSchema, ArgsDefinition, InferArgs } from '../router/registry'
 
 export type ParseArgsResult<T> = { ok: true; value: T } | { ok: false; error: AcliError }
 
@@ -118,9 +118,7 @@ export function parseArgs<T extends ArgsDefinition>(
     const issues = parseResult.error.issues
     const firstIssue = issues[0]
     const path = firstIssue.path.join('.')
-    const message = path
-      ? `Invalid value for ${path}: ${firstIssue.message}`
-      : firstIssue.message
+    const message = path ? `Invalid value for ${path}: ${firstIssue.message}` : firstIssue.message
 
     // Provide hint for missing required fields
     const hint =

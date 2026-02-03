@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { type CallToolResult, type TextContent, createAcli } from '../mcp/tool'
+import { type CallToolResult, createAcli, type TextContent } from '../mcp/tool'
 import { arg, defineCommands } from '../router/registry'
 
 /**
