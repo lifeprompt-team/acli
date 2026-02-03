@@ -10,21 +10,13 @@
 
 ## Why ACLI?
 
-> **Reduce AI context usage by 10x or more**
+Traditional MCP tool definitions require extensive schema for each tool, consuming valuable context window space. ACLI solves this by:
 
-Traditional MCP: 50 functions = 50 tools in context
-ACLI: 50 functions = ~10 domain tools
-
-**How it works:**
-- `math add`, `math multiply`, `math divide` → 1 `math` tool
-- `calendar list`, `calendar create`, `calendar delete` → 1 `calendar` tool
-
-AI discovers commands via `help` at runtime — no schema bloat.
-
-**Also:**
-- CLI syntax: `add 10 20` instead of `{"a": 10, "b": 20}`
-- Type-safe: Zod + full TypeScript inference
-- Secure: No shell execution
+- **Single Tool per Domain**: One MCP tool (e.g., `math`, `calendar`) handles related commands
+- **Dynamic Discovery**: Agents learn commands via `help` and `schema`
+- **Shell-less Security**: No shell execution, preventing injection attacks
+- **Type-safe Arguments**: Zod-based validation with full TypeScript inference
+- **CLI & MCP Dual Support**: Use as MCP tool or standalone CLI
 
 ## Installation
 
