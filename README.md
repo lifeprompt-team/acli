@@ -10,13 +10,89 @@
 
 ## Why ACLI?
 
-Traditional MCP tool definitions require extensive schema for each tool, consuming valuable context window space. ACLI solves this by:
+Traditional MCP tool definitions require verbose JSON schemas for each tool, consuming valuable context window space. ACLI solves this:
+
+| | Traditional MCP | ACLI |
+|---|-----------------|------|
+| **Code** | ~40 lines per 2 tools | ~15 lines |
+| **Schema** | Manual JSON Schema | Zod-based inference |
+| **Tools** | 1 tool per function | 1 tool per domain |
+| **Type Safety** | Runtime only | Full TypeScript inference |
+
+**Key benefits:**
 
 - **Single Tool per Domain**: One MCP tool (e.g., `math`, `calendar`) handles related commands
 - **Dynamic Discovery**: Agents learn commands via `help` and `schema`
 - **Shell-less Security**: No shell execution, preventing injection attacks
 - **Type-safe Arguments**: Zod-based validation with full TypeScript inference
 - **CLI & MCP Dual Support**: Use as MCP tool or standalone CLI
+
+<details>
+<summary><strong>View full code comparison</strong></summary>
+
+**Traditional MCP** — verbose schema definitions:
+
+```typescript
+server.setRequestHandler(ListToolsRequestSchema, async () => ({
+  tools: [
+    {
+      name: "add",
+      description: "Add two numbers",
+      inputSchema: {
+        type: "object",
+        properties: {
+          a: { type: "number", description: "First number" },
+          b: { type: "number", description: "Second number" }
+        },
+        required: ["a", "b"]
+      }
+    },
+    {
+      name: "multiply",
+      description: "Multiply two numbers",
+      inputSchema: {
+        type: "object",
+        properties: {
+          a: { type: "number", description: "First number" },
+          b: { type: "number", description: "Second number" }
+        },
+        required: ["a", "b"]
+      }
+    }
+  ]
+}));
+
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
+  if (name === "add") {
+    return { content: [{ type: "text", text: JSON.stringify({ result: args.a + args.b }) }] };
+  }
+  if (name === "multiply") {
+    return { content: [{ type: "text", text: JSON.stringify({ result: args.a * args.b }) }] };
+  }
+  throw new Error("Unknown tool");
+});
+```
+
+**ACLI** — same functionality, type-safe and concise:
+
+```typescript
+const add = defineCommand({
+  description: "Add two numbers",
+  args: { a: arg(z.coerce.number()), b: arg(z.coerce.number()) },
+  handler: async ({ a, b }) => ({ result: a + b }),
+})
+
+const multiply = defineCommand({
+  description: "Multiply two numbers",
+  args: { a: arg(z.coerce.number()), b: arg(z.coerce.number()) },
+  handler: async ({ a, b }) => ({ result: a * b }),
+})
+
+registerAcli(server, { add, multiply }, { name: "math" })
+```
+
+</details>
 
 ## Installation
 
