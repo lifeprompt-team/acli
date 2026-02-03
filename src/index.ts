@@ -19,7 +19,7 @@ export {
   type AcliToolOptions,
   type CallToolResult,
   type ImageContent,
-  type TextContent,
+  type TextContent
 } from './mcp/tool'
 export { error, type AcliErrorCode } from './response'
 export { arg, defineCommands } from './router/registry'
@@ -29,5 +29,6 @@ export type {
   ArgsDefinition,
   CommandDefinition,
   CommandRegistry,
-  InferArgs,
+  InferArgs
 } from './router/registry'
+

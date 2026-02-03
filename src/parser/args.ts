@@ -2,9 +2,9 @@
  * Argument parser using Zod schemas
  */
 
-import { z } from 'zod'
-import { type AcliError, error } from '../response/types'
-import type { ArgSchema, ArgsDefinition, InferArgs } from '../router/registry'
+import { z } from 'zod';
+import { type AcliError, error } from '../response/types';
+import type { ArgSchema, ArgsDefinition, InferArgs } from '../router/registry';
 
 export type ParseArgsResult<T> = { ok: true; value: T } | { ok: false; error: AcliError }
 

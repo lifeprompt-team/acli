@@ -64,6 +64,32 @@ registerAcli(server, commands, {
 // → Tool description: "Mathematical operations. Commands: add, multiply. Run 'help' for details."
 ```
 
+### How AI Agents Call ACLI Tools
+
+Once registered, AI agents (like Claude) call the tool with a `command` string:
+
+```json
+// Tool call from AI agent
+{
+  "name": "math",
+  "arguments": {
+    "command": "add 10 20"
+  }
+}
+
+// Response
+{
+  "content": [{ "type": "text", "text": "{\"result\":30}" }]
+}
+```
+
+```json
+// Discovery - agents can explore available commands
+{ "name": "math", "arguments": { "command": "help" } }
+{ "name": "math", "arguments": { "command": "help add" } }
+{ "name": "math", "arguments": { "command": "schema" } }
+```
+
 ### Standalone CLI
 
 ```typescript

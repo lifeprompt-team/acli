@@ -1,13 +1,9 @@
 export {
-  arg,
-  type ArgMeta,
-  type ArgSchema,
-  type ArgsDefinition,
-  type CommandDefinition,
-  type CommandRegistry,
-  defineCommands,
-  extractCommandPath,
-  findCommand,
-  type InferArgs,
-  listCommands,
-} from './registry'
+    arg, defineCommands,
+    extractCommandPath,
+    findCommand, listCommands, type ArgMeta,
+    type ArgSchema,
+    type ArgsDefinition, type CommandDefinition,
+    type CommandRegistry, type InferArgs
+} from './registry';
+
