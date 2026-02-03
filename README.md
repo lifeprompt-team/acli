@@ -10,59 +10,21 @@
 
 ## Why ACLI?
 
-Traditional MCP registers each function as a separate tool, which consumes AI context window space as the number of tools grows. ACLI consolidates related commands into a single domain tool:
+> **Reduce AI context usage by 10x or more**
 
-| | Traditional MCP | ACLI |
-|---|-----------------|------|
-| **Tool count** | 1 tool per function | 1 tool per domain |
-| **Context usage** | Grows with each tool | Fixed + dynamic discovery |
-| **Invocation** | `{"a": 10, "b": 20}` | `add 10 20` (CLI-like) |
+Traditional MCP: 50 functions = 50 tools in context
+ACLI: 50 functions = ~10 domain tools
 
-**Key benefits:**
+**How it works:**
+- `math add`, `math multiply`, `math divide` → 1 `math` tool
+- `calendar list`, `calendar create`, `calendar delete` → 1 `calendar` tool
 
-- **Single Tool per Domain**: One MCP tool (e.g., `math`, `calendar`) handles related commands
-- **Dynamic Discovery**: Agents learn commands via `help` and `schema` at runtime
-- **CLI-like Syntax**: Positional arguments enable concise invocations
-- **Shell-less Security**: No shell execution, preventing injection attacks
-- **Type-safe Arguments**: Zod-based validation with full TypeScript inference
+AI discovers commands via `help` at runtime — no schema bloat.
 
-<details>
-<summary><strong>View code comparison</strong></summary>
-
-**Traditional MCP** — each function is a separate tool:
-
-```typescript
-// Two separate tools registered
-server.tool("add", { a: z.number(), b: z.number() }, async ({ a, b }) => {
-  return { content: [{ type: "text", text: JSON.stringify({ result: a + b }) }] };
-});
-
-server.tool("multiply", { a: z.number(), b: z.number() }, async ({ a, b }) => {
-  return { content: [{ type: "text", text: JSON.stringify({ result: a * b }) }] };
-});
-// → AI sees 2 tools in context, each with full schema
-```
-
-**ACLI** — commands grouped under one domain tool:
-
-```typescript
-const add = defineCommand({
-  description: "Add two numbers",
-  args: { a: arg(z.coerce.number()), b: arg(z.coerce.number()) },
-  handler: async ({ a, b }) => ({ result: a + b }),
-})
-
-const multiply = defineCommand({
-  description: "Multiply two numbers",
-  args: { a: arg(z.coerce.number()), b: arg(z.coerce.number()) },
-  handler: async ({ a, b }) => ({ result: a * b }),
-})
-
-registerAcli(server, { add, multiply }, { name: "math" })
-// → AI sees 1 "math" tool, discovers commands via "help"
-```
-
-</details>
+**Also:**
+- CLI syntax: `add 10 20` instead of `{"a": 10, "b": 20}`
+- Type-safe: Zod + full TypeScript inference
+- Secure: No shell execution
 
 ## Installation
 
