@@ -71,17 +71,10 @@ export const VERSION =
 
 ## Release Flow
 
-### Prerequisites
+タグを push すると CI が自動で npm publish + GitHub Release を作成します。
 
 ```bash
-# npm にログイン済みであることを確認
-npm whoami
-```
-
-### Full Release Flow
-
-```bash
-# 1. PR をマージ（GitHub UI または CLI）
+# 1. PR をマージ
 gh pr merge <PR_NUMBER> --squash
 
 # 2. main に切り替えて最新を取得
@@ -93,28 +86,28 @@ npm version patch   # 0.6.0 → 0.6.1 (bug fixes)
 npm version minor   # 0.6.0 → 0.7.0 (new features)
 npm version major   # 0.6.0 → 1.0.0 (breaking changes)
 
-# 4. リモートに push
+# 4. push（CI が自動で npm publish + GitHub Release）
 git push && git push --tags
-
-# 5. npm に公開
-npm publish
-
-# 6. GitHub Release を作成（オプション）
-gh release create v0.7.0 --generate-notes
 ```
 
-### What `npm version` does
+### What happens automatically
 
-- Updates `package.json` version
-- Creates a git commit with message `v0.7.0`
-- Creates a git tag `v0.7.0`
+1. `npm version` → package.json 更新 + commit + tag 作成
+2. `git push --tags` → CI がトリガー
+3. CI (`.github/workflows/release.yml`) が:
+   - npm に公開
+   - GitHub Release を作成
+
+**Note:** 手動で `npm publish` や `gh release create` を実行する必要はありません。
 
 ---
 
 ## CI/CD
 
-- **GitHub Actions**: Tests run on every push
-- **Release**: Manual or triggered by version tag
+| Workflow | Trigger | Action |
+|----------|---------|--------|
+| `ci.yml` | Every push/PR | Test, Lint, Type check |
+| `release.yml` | Tag push (`v*`) | npm publish + GitHub Release |
 
 ---
 
