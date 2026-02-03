@@ -188,43 +188,49 @@ interface CommandDefinition<TArgs extends ArgsDefinition> {
 
 ### Example with Subcommands
 
+Use `cmd()` (alias for `defineCommand`) inside subcommands to enable type inference:
+
 ```typescript
 import { z } from "zod"
-import { defineCommand, arg } from "@lifeprompt/acli"
+import { defineCommand, cmd, arg } from "@lifeprompt/acli"
 
 const calendar = defineCommand({
   description: "Calendar management",
   subcommands: {
-    events: {
+    events: cmd({
       description: "Manage events",
       subcommands: {
-        list: {
+        list: cmd({
           description: "List events",
           args: {
             from: arg(z.coerce.date().optional()),
             limit: arg(z.coerce.number().int().default(10)),
           },
           handler: async ({ from, limit }) => {
+            // from: Date | undefined, limit: number (types inferred!)
             return { events: await fetchEvents({ from, limit }) }
           },
-        },
-        create: {
+        }),
+        create: cmd({
           description: "Create event",
           args: {
             title: arg(z.string().min(1)),
             date: arg(z.coerce.date()),
           },
           handler: async ({ title, date }) => {
+            // title: string, date: Date (types inferred!)
             return { event: await createEvent({ title, date }) }
           },
-        },
+        }),
       },
-    },
+    }),
   },
 })
 
 // Use directly: registerAcli(server, { calendar }, { name: "cli" })
 ```
+
+> **Note**: Without `cmd()`, inline subcommand handlers receive `unknown` types due to TypeScript's type inference limitations. Always wrap subcommands with `cmd()` for full type safety.
 
 Usage:
 ```
@@ -383,7 +389,8 @@ import type {
 } from "@lifeprompt/acli"
 
 // Helper functions
-import { arg, defineCommand } from "@lifeprompt/acli"
+import { arg, defineCommand, cmd } from "@lifeprompt/acli"
+// cmd is an alias for defineCommand - use inside subcommands for type inference
 ```
 
 ---
