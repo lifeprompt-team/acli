@@ -1,6 +1,6 @@
 {
   "name": "@lifeprompt/acli",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "type": "module",
   "description": "acli - Agent CLI protocol for AI agents on MCP",
   "main": "dist/index.cjs",
@@ -41,7 +41,11 @@
     "agent",
     "cli",
     "llm",
-    "model-context-protocol"
+    "model-context-protocol",
+    "claude",
+    "tool-definition",
+    "context-window",
+    "typescript"
   ],
   "author": "lifeprompt-team",
   "license": "MIT",
