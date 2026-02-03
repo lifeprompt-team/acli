@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { arg, defineCommand } from '../router/registry'
+import { arg, cmd, defineCommand } from '../router/registry'
 
 describe('type inference with defineCommand', () => {
   it('infers handler args correctly', async () => {
@@ -54,5 +54,58 @@ describe('type inference with defineCommand', () => {
     const commands = { add, multiply }
     expect(commands.add.description).toBe('Add')
     expect(commands.multiply.description).toBe('Multiply')
+  })
+
+  it('infers types in subcommands using cmd alias', async () => {
+    const math = defineCommand({
+      description: 'Math operations',
+      subcommands: {
+        add: cmd({
+          description: 'Add two numbers',
+          args: { a: arg(z.coerce.number()), b: arg(z.coerce.number()) },
+          handler: async ({ a, b }) => {
+            // TypeScript infers a and b as number
+            const result: number = a + b
+            return { result }
+          },
+        }),
+        multiply: cmd({
+          description: 'Multiply two numbers',
+          args: { a: arg(z.coerce.number()), b: arg(z.coerce.number()) },
+          handler: async ({ a, b }) => {
+            const result: number = a * b
+            return { result }
+          },
+        }),
+      },
+    })
+
+    expect(math.description).toBe('Math operations')
+    expect(math.subcommands?.add.description).toBe('Add two numbers')
+    expect(math.subcommands?.multiply.description).toBe('Multiply two numbers')
+  })
+
+  it('supports nested subcommands with cmd', async () => {
+    const cli = defineCommand({
+      description: 'CLI',
+      subcommands: {
+        time: cmd({
+          description: 'Time utilities',
+          subcommands: {
+            now: cmd({
+              description: 'Get current time',
+              args: { format: arg(z.string()) },
+              handler: async ({ format }) => {
+                // format is inferred as string
+                const f: string = format
+                return { format: f }
+              },
+            }),
+          },
+        }),
+      },
+    })
+
+    expect(cli.subcommands?.time.subcommands?.now.description).toBe('Get current time')
   })
 })

@@ -104,6 +104,31 @@ export function defineCommand<TArgs extends ArgsDefinition>(
 }
 
 /**
+ * Short alias for defineCommand - use inside subcommands for cleaner inline definitions
+ *
+ * @example
+ * import { z } from "zod"
+ * import { defineCommand, cmd, arg, registerAcli } from "@lifeprompt/acli"
+ *
+ * const math = defineCommand({
+ *   description: 'Math operations',
+ *   subcommands: {
+ *     add: cmd({
+ *       description: 'Add two numbers',
+ *       args: { a: arg(z.coerce.number()), b: arg(z.coerce.number()) },
+ *       handler: async ({ a, b }) => ({ result: a + b }),
+ *     }),
+ *     multiply: cmd({
+ *       description: 'Multiply two numbers',
+ *       args: { a: arg(z.coerce.number()), b: arg(z.coerce.number()) },
+ *       handler: async ({ a, b }) => ({ result: a * b }),
+ *     }),
+ *   },
+ * })
+ */
+export const cmd = defineCommand
+
+/**
  * Find a command definition by path
  */
 export function findCommand(registry: CommandRegistry, path: string[]): CommandDefinition | null {
