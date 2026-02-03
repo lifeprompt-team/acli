@@ -1,10 +1,1 @@
-export {
-  type AcliErrorCode,
-  type AcliErrorDetail,
-  type AcliErrorResponse,
-  type AcliMeta,
-  type AcliResponse,
-  type AcliSuccessResponse,
-  error,
-  success,
-} from './types'
+export { type AcliError, type AcliErrorCode, error } from './types'

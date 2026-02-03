@@ -7,7 +7,7 @@
  * Security validation (SQL injection, etc.) should be done at the handler level.
  */
 
-import { type AcliErrorResponse, error } from '../response/types'
+import { type AcliError, error } from '../response/types'
 
 /**
  * Maximum constraints for DoS prevention
@@ -16,7 +16,7 @@ const MAX_COMMAND_LENGTH = 10000
 const MAX_ARGS = 100
 const MAX_ARG_LENGTH = 10000
 
-export type TokenizeResult = { ok: true; value: string[] } | { ok: false; error: AcliErrorResponse }
+export type TokenizeResult = { ok: true; value: string[] } | { ok: false; error: AcliError }
 
 /**
  * Tokenize a command string into an array of arguments

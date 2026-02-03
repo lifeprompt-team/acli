@@ -1,15 +1,21 @@
 // acli - Agent CLI
 // Lightweight CLI protocol for AI agents on MCP
 
-export { type CliOptions, runCli, setCommands } from './cli'
-export { type AcliToolOptions, createAcli, registerAcli } from './mcp/tool'
-// Types
-export type {
-  AcliErrorCode,
-  AcliErrorResponse,
-  AcliResponse,
-  AcliSuccessResponse,
-} from './response/types'
+// Version (single source of truth)
+export const VERSION = '0.5.0'
+
+export { type CliOptions, runCli } from './cli'
+export { type ExecuteResult, executeCommand } from './executor'
+export {
+  type AcliError,
+  type AcliToolOptions,
+  type CallToolResult,
+  createAcli,
+  type ImageContent,
+  registerAcli,
+  type TextContent,
+} from './mcp/tool'
+export { type AcliErrorCode, error } from './response'
 export type {
   ArgumentDefinition,
   ArgumentType,
@@ -17,6 +23,3 @@ export type {
   ParsedArgs,
 } from './router/registry'
 export { defineCommands } from './router/registry'
-
-// Version
-export const VERSION = '0.4.4'

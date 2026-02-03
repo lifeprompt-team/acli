@@ -1,100 +1,51 @@
 /**
  * MCP Tool integration
+ *
+ * Handler return values are converted to MCP response format:
+ * - If handler returns { content: [...] }, it's passed through as-is (MCP native)
+ * - Otherwise, the return value is wrapped in { content: [{ type: "text", text: JSON.stringify(value) }] }
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { CallToolResult, ImageContent, TextContent } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
-import { handleHelp, handleSchema, handleVersion } from '../discovery'
-import { parseArgs } from '../parser/args'
-import { tokenize } from '../parser/tokenizer'
-import { type AcliResponse, error } from '../response/types'
-import {
-  type CommandRegistry,
-  extractCommandPath,
-  findCommand,
-  listCommands,
-} from '../router/registry'
+import { executeCommand } from '../executor'
+import type { AcliError } from '../response'
+import type { CommandRegistry } from '../router/registry'
 
 /**
- * Execute CLI command and return response
+ * Re-export types for convenience
  */
-async function executeCommand(command: string, commands: CommandRegistry): Promise<AcliResponse> {
-  const startTime = Date.now()
+export type { AcliError, CallToolResult, ImageContent, TextContent }
 
-  // Tokenize
-  const tokenResult = tokenize(command)
-  if (!tokenResult.ok) {
-    return tokenResult.error
+/**
+ * Check if a value is already in MCP response format
+ */
+function isMcpResponse(value: unknown): value is CallToolResult {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'content' in value &&
+    Array.isArray((value as CallToolResult).content)
+  )
+}
+
+/**
+ * Convert any value to MCP response format
+ */
+function toMcpResponse(value: unknown, isError = false): CallToolResult {
+  if (isMcpResponse(value)) {
+    return value
   }
 
-  const tokens = tokenResult.value
-  if (tokens.length === 0) {
-    return error('PARSE_ERROR', 'Empty command', {
-      hint: "Run 'help' for available commands",
-    })
-  }
-
-  // Handle built-in commands
-  const firstToken = tokens[0]
-  if (firstToken === 'help') {
-    return handleHelp(commands, tokens.slice(1))
-  }
-  if (firstToken === 'schema') {
-    return handleSchema(commands, tokens.slice(1))
-  }
-  if (firstToken === 'version') {
-    return handleVersion()
-  }
-
-  // Extract command path
-  const [commandPath, argTokens] = extractCommandPath(commands, tokens)
-  if (commandPath.length === 0) {
-    return error('COMMAND_NOT_FOUND', `Command '${firstToken}' not found`, {
-      hint: "Run 'help' for available commands",
-      examples: listCommands(commands)
-        .slice(0, 3)
-        .map((c) => c.name),
-    })
-  }
-
-  // Find command definition
-  const commandDef = findCommand(commands, commandPath)
-  if (!commandDef) {
-    return error('COMMAND_NOT_FOUND', `Command '${commandPath.join(' ')}' not found`)
-  }
-
-  // Check if command has handler
-  if (!commandDef.handler) {
-    if (commandDef.subcommands) {
-      return error('VALIDATION_ERROR', `'${commandPath.join(' ')}' requires a subcommand`, {
-        hint: `Run 'help ${commandPath.join(' ')}' for available subcommands`,
-      })
-    }
-    return error('EXECUTION_ERROR', `Command '${commandPath.join(' ')}' has no handler`)
-  }
-
-  // Parse arguments
-  const argsResult = parseArgs(argTokens, commandDef.args || {})
-  if (!argsResult.ok) {
-    return argsResult.error
-  }
-
-  // Execute handler
-  try {
-    const result = await commandDef.handler(argsResult.value)
-    const duration = Date.now() - startTime
-
-    return {
-      success: true,
-      data: result,
-      _meta: {
-        command: command,
-        duration_ms: duration,
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify(value, null, 2),
       },
-    }
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    return error('EXECUTION_ERROR', `Command failed: ${message}`)
+    ],
+    ...(isError && { isError: true }),
   }
 }
 
@@ -124,31 +75,35 @@ function generateDescription(commands: CommandRegistry, baseDescription?: string
 /**
  * Register acli tool with MCP Server
  *
+ * Handler return values are automatically converted to MCP format:
+ * - { content: [...] } → passed through as-is
+ * - Any other value → wrapped in { content: [{ type: "text", text: JSON.stringify(value) }] }
+ *
  * @example
  * ```typescript
  * import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
  * import { registerAcli, defineCommands } from "@lifeprompt/acli";
  *
  * const commands = defineCommands({
- *   campaigns: {
- *     description: "Manage campaigns",
- *     subcommands: { list: { ... }, create: { ... } }
+ *   simple: {
+ *     description: "Returns simple object",
+ *     handler: async () => ({ result: 123 }),
+ *     // → { content: [{ type: "text", text: '{"result":123}' }] }
  *   },
- *   ads: { ... }
+ *   native: {
+ *     description: "Returns MCP native format",
+ *     handler: async () => ({
+ *       content: [
+ *         { type: "text", text: "Hello" },
+ *         { type: "image", data: "base64...", mimeType: "image/png" },
+ *       ]
+ *     }),
+ *     // → passed through as-is
+ *   },
  * });
  *
  * const server = new McpServer({ name: "my-server", version: "1.0.0" });
- *
- * // With options (recommended)
- * registerAcli(server, commands, {
- *   name: "google_ads",
- *   description: "Google Ads management."
- * });
- * // → description: "Google Ads management. Commands: campaigns, ads. Run 'help' for details."
- *
- * // With just name (backward compatible)
- * registerAcli(server, commands, "google_ads");
- * // → description: "Commands: campaigns, ads. Run 'help' for details."
+ * registerAcli(server, commands, { name: "my_tool", description: "My tool." });
  * ```
  */
 export function registerAcli(
@@ -156,7 +111,6 @@ export function registerAcli(
   commands: CommandRegistry,
   options: string | AcliToolOptions = 'cli',
 ): void {
-  // Normalize options
   const opts: AcliToolOptions = typeof options === 'string' ? { name: options } : options
 
   const toolName = opts.name
@@ -170,18 +124,9 @@ export function registerAcli(
         command: z.string().describe(`CLI command (e.g., '${Object.keys(commands)[0]} --help')`),
       },
     },
-    async (params: { command: string }) => {
-      const result = await executeCommand(params.command, commands)
-
-      // MCP expects { content: [...] } format
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(result, null, 2),
-          },
-        ],
-      }
+    async (params: { command: string }): Promise<CallToolResult> => {
+      const { result, isError } = await executeCommand(params.command, commands)
+      return toMcpResponse(result, isError)
     },
   )
 }
@@ -190,6 +135,10 @@ export function registerAcli(
 // Legacy API (for standalone use without MCP SDK)
 // ============================================================
 
+/**
+ * Legacy tool definition type
+ * @deprecated Use registerAcli with MCP SDK instead
+ */
 export interface MCPToolDefinition {
   name: string
   description: string
@@ -203,7 +152,7 @@ export interface MCPToolDefinition {
     }
     required: string[]
   }
-  execute: (input: { command: string }) => Promise<AcliResponse>
+  execute: (input: { command: string }) => Promise<CallToolResult>
 }
 
 /**
@@ -225,6 +174,9 @@ export function createAcli(commands: CommandRegistry): MCPToolDefinition {
       },
       required: ['command'],
     },
-    execute: (input) => executeCommand(input.command, commands),
+    execute: async (input): Promise<CallToolResult> => {
+      const { result, isError } = await executeCommand(input.command, commands)
+      return toMcpResponse(result, isError)
+    },
   }
 }

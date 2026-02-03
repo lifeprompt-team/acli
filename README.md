@@ -84,7 +84,7 @@ runCli({ commands })
 
 ```bash
 node my-cli.mjs greet World
-# → { "success": true, "data": { "message": "Hello, World!" } }
+# → { "message": "Hello, World!" }
 ```
 
 ---
@@ -258,31 +258,63 @@ These commands are automatically available:
 
 ## Response Format
 
-### Success Response
+ACLI uses MCP-native response format for seamless integration.
+
+### Handler Return Values
+
+Handlers can return values in two ways:
 
 ```typescript
-interface AcliSuccessResponse {
-  success: true
-  data: unknown              // Handler return value
-  message?: string           // Optional message
-  _meta?: {
-    command: string          // Original command
-    duration_ms: number      // Execution time
-  }
+// 1. Simple object (auto-wrapped to MCP format)
+handler: async () => ({ result: 123 })
+// → { content: [{ type: "text", text: '{"result":123}' }] }
+
+// 2. MCP native format (passed through as-is)
+handler: async () => ({
+  content: [
+    { type: "text", text: "Hello" },
+    { type: "image", data: "base64...", mimeType: "image/png" },
+  ]
+})
+// → passed through unchanged
+```
+
+### MCP Response Structure
+
+```typescript
+interface CallToolResult {
+  content: Array<TextContent | ImageContent>
+  isError?: boolean
+}
+
+interface TextContent {
+  type: "text"
+  text: string
+}
+
+interface ImageContent {
+  type: "image"
+  data: string      // base64 encoded
+  mimeType: string
 }
 ```
 
 ### Error Response
 
+Errors are returned with `isError: true` and structured error data:
+
 ```typescript
-interface AcliErrorResponse {
-  success: false
-  error: {
-    code: AcliErrorCode      // Machine-readable code
-    message: string          // Human-readable message
-    hint?: string            // Suggestion for fix
-    examples?: string[]      // Example correct usage
-  }
+// Error response structure
+{
+  content: [{ type: "text", text: JSON.stringify({
+    error: {
+      code: AcliErrorCode,
+      message: string,
+      hint?: string,
+      examples?: string[]
+    }
+  })}],
+  isError: true
 }
 ```
 
@@ -350,15 +382,19 @@ All types are exported for extension:
 
 ```typescript
 import type {
+  // Command types
   CommandDefinition,
-  CommandRegistry,
   ArgumentDefinition,
   ArgumentType,
   ParsedArgs,
-  AcliResponse,
-  AcliSuccessResponse,
-  AcliErrorResponse,
+  // MCP response types
+  CallToolResult,
+  TextContent,
+  ImageContent,
+  // Error types
+  AcliError,
   AcliErrorCode,
+  // Options
   AcliToolOptions,
   CliOptions,
 } from "@lifeprompt/acli"

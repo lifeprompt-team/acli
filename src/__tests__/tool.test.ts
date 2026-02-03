@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { createAcli } from '../mcp/tool'
+import { type CallToolResult, createAcli } from '../mcp/tool'
 import { defineCommands } from '../router/registry'
+
+/**
+ * Helper to extract JSON from MCP response
+ */
+function extractJson(response: CallToolResult): unknown {
+  const textContent = response.content.find((c) => c.type === 'text')
+  if (!textContent || textContent.type !== 'text') {
+    throw new Error('No text content found')
+  }
+  return JSON.parse(textContent.text)
+}
 
 describe('MCP tool', () => {
   const commands = defineCommands({
@@ -29,6 +40,15 @@ describe('MCP tool', () => {
         throw new Error('Intentional failure')
       },
     },
+    native: {
+      description: 'Returns MCP native format',
+      handler: async () => ({
+        content: [
+          { type: 'text' as const, text: 'Hello from native' },
+          { type: 'text' as const, text: 'Second content' },
+        ],
+      }),
+    },
   })
 
   const tool = createAcli(commands)
@@ -44,115 +64,122 @@ describe('MCP tool', () => {
   })
 
   describe('command execution', () => {
-    it('executes simple command', async () => {
+    it('executes simple command and returns MCP format', async () => {
       const result = await tool.execute({ command: 'echo --message hello' })
-      expect(result.success).toBe(true)
-      if (result.success) {
-        expect(result.data).toEqual({ echoed: 'hello' })
-      }
+      expect(result.content).toBeDefined()
+      expect(result.isError).toBeFalsy()
+
+      const data = extractJson(result)
+      expect(data).toEqual({ echoed: 'hello' })
     })
 
     it('executes nested command', async () => {
       const result = await tool.execute({ command: 'greet hello --name Alice' })
-      expect(result.success).toBe(true)
-      if (result.success) {
-        expect(result.data).toEqual({ greeting: 'Hello, Alice!' })
-      }
+      expect(result.isError).toBeFalsy()
+
+      const data = extractJson(result)
+      expect(data).toEqual({ greeting: 'Hello, Alice!' })
     })
 
     it('uses default values', async () => {
       const result = await tool.execute({ command: 'greet hello' })
-      expect(result.success).toBe(true)
-      if (result.success) {
-        expect(result.data).toEqual({ greeting: 'Hello, World!' })
-      }
+      expect(result.isError).toBeFalsy()
+
+      const data = extractJson(result)
+      expect(data).toEqual({ greeting: 'Hello, World!' })
+    })
+
+    it('passes through MCP native format', async () => {
+      const result = await tool.execute({ command: 'native' })
+      expect(result.content).toHaveLength(2)
+      expect(result.content[0]).toEqual({ type: 'text', text: 'Hello from native' })
+      expect(result.content[1]).toEqual({ type: 'text', text: 'Second content' })
     })
   })
 
   describe('error handling', () => {
     it('returns error for empty command', async () => {
       const result = await tool.execute({ command: '' })
-      expect(result.success).toBe(false)
-      if (!result.success) {
-        expect(result.error.code).toBe('PARSE_ERROR')
-      }
+      expect(result.isError).toBe(true)
+
+      const data = extractJson(result) as { error: { code: string } }
+      expect(data.error.code).toBe('PARSE_ERROR')
     })
 
     it('returns error for unknown command', async () => {
       const result = await tool.execute({ command: 'unknown' })
-      expect(result.success).toBe(false)
-      if (!result.success) {
-        expect(result.error.code).toBe('COMMAND_NOT_FOUND')
-      }
+      expect(result.isError).toBe(true)
+
+      const data = extractJson(result) as { error: { code: string } }
+      expect(data.error.code).toBe('COMMAND_NOT_FOUND')
     })
 
     it('returns error for missing required arg', async () => {
       const result = await tool.execute({ command: 'echo' })
-      expect(result.success).toBe(false)
-      if (!result.success) {
-        expect(result.error.code).toBe('VALIDATION_ERROR')
-      }
+      expect(result.isError).toBe(true)
+
+      const data = extractJson(result) as { error: { code: string } }
+      expect(data.error.code).toBe('VALIDATION_ERROR')
     })
 
     it('catches handler errors', async () => {
       const result = await tool.execute({ command: 'fail' })
-      expect(result.success).toBe(false)
-      if (!result.success) {
-        expect(result.error.code).toBe('EXECUTION_ERROR')
-        expect(result.error.message).toContain('Intentional failure')
-      }
+      expect(result.isError).toBe(true)
+
+      const data = extractJson(result) as { error: { code: string; message: string } }
+      expect(data.error.code).toBe('EXECUTION_ERROR')
+      expect(data.error.message).toContain('Intentional failure')
     })
 
     it('treats shell metacharacters as plain text', async () => {
-      // ACLIはシェルを使用しないため、特殊文字は単なるテキストとして扱われる
       const result = await tool.execute({ command: 'echo --message "test; rm -rf /"' })
-      expect(result.success).toBe(true)
-      if (result.success) {
-        expect(result.data).toEqual({ echoed: 'test; rm -rf /' })
-      }
+      expect(result.isError).toBeFalsy()
+
+      const data = extractJson(result)
+      expect(data).toEqual({ echoed: 'test; rm -rf /' })
     })
   })
 
   describe('discovery commands', () => {
     it('handles help command', async () => {
       const result = await tool.execute({ command: 'help' })
-      expect(result.success).toBe(true)
-      if (result.success) {
-        expect(result.data).toHaveProperty('commands')
-      }
+      expect(result.isError).toBeFalsy()
+
+      const data = extractJson(result) as Record<string, unknown>
+      expect(data).toHaveProperty('commands')
     })
 
     it('handles help for specific command', async () => {
       const result = await tool.execute({ command: 'help echo' })
-      expect(result.success).toBe(true)
-      if (result.success) {
-        expect(result.data).toHaveProperty('command', 'echo')
-        expect(result.data).toHaveProperty('arguments')
-      }
+      expect(result.isError).toBeFalsy()
+
+      const data = extractJson(result) as Record<string, unknown>
+      expect(data).toHaveProperty('command', 'echo')
+      expect(data).toHaveProperty('arguments')
     })
 
     it('handles version command', async () => {
       const result = await tool.execute({ command: 'version' })
-      expect(result.success).toBe(true)
-      if (result.success) {
-        expect(result.data).toHaveProperty('acli_version')
-      }
+      expect(result.isError).toBeFalsy()
+
+      const data = extractJson(result) as Record<string, unknown>
+      expect(data).toHaveProperty('acli_version')
     })
 
     it('handles schema command', async () => {
       const result = await tool.execute({ command: 'schema' })
-      expect(result.success).toBe(true)
-      if (result.success) {
-        expect(result.data).toHaveProperty('commands')
-      }
+      expect(result.isError).toBeFalsy()
+
+      const data = extractJson(result) as Record<string, unknown>
+      expect(data).toHaveProperty('commands')
     })
 
     it('handles schema for specific command', async () => {
       const result = await tool.execute({ command: 'schema echo' })
-      expect(result.success).toBe(true)
-      if (result.success) {
-        expect(result.data).toHaveProperty('inputSchema')
-      }
+      expect(result.isError).toBeFalsy()
+
+      const data = extractJson(result) as Record<string, unknown>
+      expect(data).toHaveProperty('inputSchema')
     })
   })
 })

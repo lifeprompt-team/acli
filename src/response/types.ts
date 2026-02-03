@@ -12,68 +12,26 @@ export type AcliErrorCode =
   | 'PATH_TRAVERSAL_BLOCKED'
 
 /**
- * Metadata included in responses
- */
-export interface AcliMeta {
-  command: string
-  duration_ms?: number
-}
-
-/**
- * Success response structure
- */
-export interface AcliSuccessResponse<T = unknown> {
-  success: true
-  data: T
-  message?: string
-  _meta?: AcliMeta
-}
-
-/**
- * Error detail structure
- */
-export interface AcliErrorDetail {
-  code: AcliErrorCode
-  message: string
-  hint?: string
-  examples?: string[]
-}
-
-/**
  * Error response structure
  */
-export interface AcliErrorResponse {
-  success: false
-  error: AcliErrorDetail
-  _meta?: AcliMeta
-}
-
-/**
- * Union type for all acli responses
- */
-export type AcliResponse<T = unknown> = AcliSuccessResponse<T> | AcliErrorResponse
-
-/**
- * Create a success response
- */
-export function success<T>(data: T, message?: string): AcliSuccessResponse<T> {
-  return {
-    success: true,
-    data,
-    ...(message && { message }),
+export interface AcliError {
+  error: {
+    code: AcliErrorCode
+    message: string
+    hint?: string
+    examples?: string[]
   }
 }
 
 /**
- * Create an error response
+ * Create an error object
  */
 export function error(
   code: AcliErrorCode,
   message: string,
   options?: { hint?: string; examples?: string[] },
-): AcliErrorResponse {
+): AcliError {
   return {
-    success: false,
     error: {
       code,
       message,

@@ -2,75 +2,117 @@
  * Discovery commands: help, schema, version
  */
 
-import { type AcliResponse, success } from '../response/types'
+import { VERSION } from '../index'
 import {
-    type CommandDefinition,
-    type CommandRegistry,
-    findCommand,
-    listCommands,
+  type CommandDefinition,
+  type CommandRegistry,
+  findCommand,
+  listCommands,
 } from '../router/registry'
 
-// Version constant (avoid circular import)
-const VERSION = '0.4.4'
+/**
+ * Help response type
+ */
+export interface HelpResponse {
+  description: string
+  commands?: Array<{ name: string; description: string }>
+  usage?: string
+  examples?: string[]
+  command?: string
+  subcommands?: Array<{ name: string; description: string }>
+  arguments?: Array<{
+    name: string
+    type: string
+    required: boolean
+    default?: unknown
+    description?: string
+    examples?: string[]
+  }>
+}
+
+/**
+ * Schema response type
+ */
+export interface SchemaResponse {
+  commands?: Record<string, unknown>
+  command?: string
+  inputSchema?: Record<string, unknown>
+  outputSchema?: Record<string, unknown>
+  error?: string
+}
+
+/**
+ * Version response type
+ */
+export interface VersionResponse {
+  acli_version: string
+  implementation: {
+    name: string
+    version: string
+  }
+  capabilities: {
+    extensions: string[]
+  }
+}
 
 /**
  * Handle 'help' command
  */
-export function handleHelp(registry: CommandRegistry, args: string[]): AcliResponse {
+export function handleHelp(registry: CommandRegistry, args: string[]): HelpResponse {
   if (args.length === 0) {
     // Root help
     const commands = listCommands(registry)
-    return success({
+    return {
       description: 'acli - Agent CLI',
       commands: commands.filter((c) => !c.name.includes(' ')), // Top-level only
       usage: '<command> [subcommand] [options]',
       examples: commands.slice(0, 3).map((c) => c.name),
-    })
+    }
   }
 
   // Specific command help
   const commandDef = findCommand(registry, args)
   if (!commandDef) {
-    return success({
+    return {
       description: `Command '${args.join(' ')}' not found`,
       commands: listCommands(registry).filter((c) => !c.name.includes(' ')),
-    })
+    }
   }
 
-  return success(formatCommandHelp(args.join(' '), commandDef))
+  return formatCommandHelp(args.join(' '), commandDef)
 }
 
 /**
  * Handle 'schema' command
  */
-export function handleSchema(registry: CommandRegistry, args: string[]): AcliResponse {
+export function handleSchema(registry: CommandRegistry, args: string[]): SchemaResponse {
   if (args.length === 0) {
     // Full schema
-    return success({
+    return {
       commands: buildSchemaTree(registry),
-    })
+    }
   }
 
   // Specific command schema
   const commandDef = findCommand(registry, args)
   if (!commandDef) {
-    return success({
+    return {
       error: `Command '${args.join(' ')}' not found`,
-    })
+    }
   }
 
-  return success({
+  return {
     command: args.join(' '),
     inputSchema: buildInputSchema(commandDef),
     outputSchema: { type: 'object' }, // Generic for now
-  })
+  }
 }
 
 /**
  * Handle 'version' command
  */
-export function handleVersion(): AcliResponse {
-  return success({
+export function handleVersion(): VersionResponse {
+  return {
     acli_version: VERSION,
     implementation: {
       name: 'acli',
@@ -79,13 +121,13 @@ export function handleVersion(): AcliResponse {
     capabilities: {
       extensions: [],
     },
-  })
+  }
 }
 
-function formatCommandHelp(name: string, def: CommandDefinition): Record<string, unknown> {
-  const result: Record<string, unknown> = {
-    command: name,
+function formatCommandHelp(name: string, def: CommandDefinition): HelpResponse {
+  const result: HelpResponse = {
     description: def.description,
+    command: name,
   }
 
   if (def.subcommands) {
