@@ -39,13 +39,13 @@ src/
 
 ## Version Management
 
-**Single source of truth:** `package.json` の `"version"` フィールド
+**Single source of truth:** The `"version"` field in `package.json`
 
 ### How it works
 
-1. `tsup.config.ts` がビルド時に `package.json` を読み込み
-2. `__VERSION__` としてコードに注入
-3. `src/index.ts` がエクスポート
+1. `tsup.config.ts` reads `package.json` at build time
+2. Injects version as `__VERSION__` into the code
+3. `src/index.ts` exports it
 
 ```typescript
 // tsup.config.ts
@@ -63,42 +63,42 @@ export const VERSION =
 
 ### Why this approach?
 
-- **No sync issues**: バージョンを2箇所で管理する必要がない
-- **npm standard**: `npm version` コマンドが使える
-- **CI/CD friendly**: 自動化が容易
+- **No sync issues**: No need to maintain version in multiple places
+- **npm standard**: Works with `npm version` command
+- **CI/CD friendly**: Easy to automate
 
 ---
 
 ## Release Flow
 
-タグを push すると CI が自動で npm publish + GitHub Release を作成します。
+Pushing a tag triggers CI to automatically publish to npm and create a GitHub Release.
 
 ```bash
-# 1. PR をマージ
+# 1. Merge PR
 gh pr merge <PR_NUMBER> --squash
 
-# 2. main に切り替えて最新を取得
+# 2. Switch to main and pull latest
 git checkout main
 git pull
 
-# 3. バージョンを更新（自動で commit + tag 作成）
+# 3. Update version (automatically creates commit + tag)
 npm version patch   # 0.6.0 → 0.6.1 (bug fixes)
 npm version minor   # 0.6.0 → 0.7.0 (new features)
 npm version major   # 0.6.0 → 1.0.0 (breaking changes)
 
-# 4. push（CI が自動で npm publish + GitHub Release）
+# 4. Push (CI automatically publishes to npm + creates GitHub Release)
 git push && git push --tags
 ```
 
 ### What happens automatically
 
-1. `npm version` → package.json 更新 + commit + tag 作成
-2. `git push --tags` → CI がトリガー
-3. CI (`.github/workflows/release.yml`) が:
-   - npm に公開
-   - GitHub Release を作成
+1. `npm version` → Updates package.json + creates commit + tag
+2. `git push --tags` → Triggers CI
+3. CI (`.github/workflows/release.yml`):
+   - Publishes to npm
+   - Creates GitHub Release
 
-**Note:** 手動で `npm publish` や `gh release create` を実行する必要はありません。
+**Note:** You don't need to manually run `npm publish` or `gh release create`.
 
 ---
 
