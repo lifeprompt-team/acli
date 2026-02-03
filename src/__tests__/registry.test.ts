@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { defineCommands, extractCommandPath, findCommand, listCommands } from '../router/registry'
+import { z } from 'zod'
+import {
+  arg,
+  defineCommands,
+  extractCommandPath,
+  findCommand,
+  listCommands,
+} from '../router/registry'
 
 describe('command registry', () => {
   const testCommands = defineCommands({
@@ -9,7 +16,7 @@ describe('command registry', () => {
         events: {
           description: 'List events',
           args: {
-            today: { type: 'flag', description: 'Today only' },
+            today: arg(z.boolean().default(false), { description: 'Today only' }),
           },
           handler: async () => ({ events: [] }),
         },

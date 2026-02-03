@@ -15,15 +15,15 @@ Traditional MCP tool definitions require extensive schema for each tool, consumi
 - **Single Tool per Domain**: One MCP tool (e.g., `math`, `calendar`) handles related commands
 - **Dynamic Discovery**: Agents learn commands via `help` and `schema`
 - **Shell-less Security**: No shell execution, preventing injection attacks
-- **Structured Output**: JSON responses with standardized error codes
+- **Type-safe Arguments**: Zod-based validation with full TypeScript inference
 - **CLI & MCP Dual Support**: Use as MCP tool or standalone CLI
 
 ## Installation
 
 ```bash
-npm install @lifeprompt/acli
+npm install @lifeprompt/acli zod
 # or
-pnpm add @lifeprompt/acli
+pnpm add @lifeprompt/acli zod
 ```
 
 ## Quick Start
@@ -31,25 +31,26 @@ pnpm add @lifeprompt/acli
 ### MCP Server Integration
 
 ```typescript
+import { z } from "zod"
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
-import { registerAcli, defineCommands } from "@lifeprompt/acli"
+import { registerAcli, defineCommands, arg } from "@lifeprompt/acli"
 
 const commands = defineCommands({
   add: {
     description: "Add two numbers",
     args: {
-      a: { type: "number", required: true, positional: 0 },
-      b: { type: "number", required: true, positional: 1 },
+      a: arg(z.coerce.number(), { positional: 0 }),
+      b: arg(z.coerce.number(), { positional: 1 }),
     },
-    handler: async (args) => ({ result: args.a + args.b }),
+    handler: async ({ a, b }) => ({ result: a + b }),
   },
   multiply: {
     description: "Multiply two numbers",
     args: {
-      a: { type: "number", required: true, positional: 0 },
-      b: { type: "number", required: true, positional: 1 },
+      a: arg(z.coerce.number(), { positional: 0 }),
+      b: arg(z.coerce.number(), { positional: 1 }),
     },
-    handler: async (args) => ({ result: args.a * args.b }),
+    handler: async ({ a, b }) => ({ result: a * b }),
   },
 })
 
@@ -63,19 +64,46 @@ registerAcli(server, commands, {
 // → Tool description: "Mathematical operations. Commands: add, multiply. Run 'help' for details."
 ```
 
+### How AI Agents Call ACLI Tools
+
+Once registered, AI agents (like Claude) call the tool with a `command` string:
+
+```json
+// Tool call from AI agent
+{
+  "name": "math",
+  "arguments": {
+    "command": "add 10 20"
+  }
+}
+
+// Response
+{
+  "content": [{ "type": "text", "text": "{\"result\":30}" }]
+}
+```
+
+```json
+// Discovery - agents can explore available commands
+{ "name": "math", "arguments": { "command": "help" } }
+{ "name": "math", "arguments": { "command": "help add" } }
+{ "name": "math", "arguments": { "command": "schema" } }
+```
+
 ### Standalone CLI
 
 ```typescript
 #!/usr/bin/env node
-import { defineCommands, runCli } from "@lifeprompt/acli"
+import { z } from "zod"
+import { defineCommands, runCli, arg } from "@lifeprompt/acli"
 
 const commands = defineCommands({
   greet: {
     description: "Say hello",
     args: {
-      name: { type: "string", required: true, positional: 0 },
+      name: arg(z.string(), { positional: 0 }),
     },
-    handler: async (args) => ({ message: `Hello, ${args.name}!` }),
+    handler: async ({ name }) => ({ message: `Hello, ${name}!` }),
   },
 })
 
@@ -89,44 +117,55 @@ node my-cli.mjs greet World
 
 ---
 
-## API Reference
+## Argument Definition
 
-### `defineCommands(commands)`
+ACLI uses Zod for type-safe argument parsing with rich validation.
 
-Type-safe command registry builder.
+### `arg(schema, meta?)`
+
+Wraps a Zod schema with CLI metadata:
 
 ```typescript
-const commands = defineCommands({
-  commandName: {
-    description: "Command description",
-    args: { /* ArgumentDefinition */ },
-    handler: async (args) => { /* return data */ },
-    subcommands: { /* nested commands */ },
-  },
-})
+import { z } from "zod"
+import { arg } from "@lifeprompt/acli"
+
+// Basic types
+arg(z.string())                           // Required string
+arg(z.coerce.number())                    // Number (coerced from string)
+arg(z.coerce.number().int())              // Integer
+arg(z.boolean().default(false))           // Flag (presence = true)
+arg(z.coerce.date())                      // Date (ISO8601 string → Date)
+
+// Validation
+arg(z.string().min(1).max(100))           // Length validation
+arg(z.coerce.number().min(0).max(100))    // Range validation
+arg(z.enum(["json", "csv", "table"]))     // Enum validation
+arg(z.string().email())                   // Email validation
+arg(z.string().regex(/^[a-z]+$/))         // Regex validation
+
+// Optional & defaults
+arg(z.string().optional())                // Optional
+arg(z.string().default("hello"))          // With default
+
+// Metadata
+arg(z.string(), { positional: 0 })        // Positional argument
+arg(z.string(), { description: "Name" })  // Help text
+arg(z.string(), { examples: ["foo"] })    // Example values
 ```
 
-### `registerAcli(server, commands, options)`
+### `InferArgs<T>`
 
-Register commands as an MCP tool.
-
-```typescript
-registerAcli(server, commands, {
-  name: "tool_name",           // MCP tool name
-  description: "Base desc.",   // Optional, auto-generates command list
-})
-
-// Or with just name (backward compatible)
-registerAcli(server, commands, "tool_name")
-```
-
-### `runCli({ commands, args? })`
-
-Run as standalone CLI.
+Infers the parsed argument types from an args definition:
 
 ```typescript
-runCli({ commands })                    // Uses process.argv
-runCli({ commands, args: ["add", "1", "2"] })  // Custom args
+const myArgs = {
+  name: arg(z.string()),
+  count: arg(z.coerce.number().default(10)),
+  active: arg(z.boolean().optional()),
+}
+
+type MyArgs = InferArgs<typeof myArgs>
+// { name: string; count: number; active?: boolean }
 ```
 
 ---
@@ -136,17 +175,23 @@ runCli({ commands, args: ["add", "1", "2"] })  // Custom args
 ### Structure
 
 ```typescript
-interface CommandDefinition {
-  description: string                              // Required
-  args?: Record<string, ArgumentDefinition>        // Optional
-  handler?: (args: ParsedArgs) => Promise<unknown> // Optional (required if no subcommands)
-  subcommands?: Record<string, CommandDefinition>  // Optional nested commands
+import { z } from "zod"
+import { defineCommands, arg, type InferArgs } from "@lifeprompt/acli"
+
+interface CommandDefinition<TArgs extends ArgsDefinition> {
+  description: string                        // Required
+  args?: TArgs                               // Zod-based arguments
+  handler?: (args: InferArgs<TArgs>) => Promise<unknown>
+  subcommands?: CommandRegistry              // Nested commands
 }
 ```
 
 ### Example with Subcommands
 
 ```typescript
+import { z } from "zod"
+import { defineCommands, arg } from "@lifeprompt/acli"
+
 const commands = defineCommands({
   calendar: {
     description: "Calendar management",
@@ -157,21 +202,21 @@ const commands = defineCommands({
           list: {
             description: "List events",
             args: {
-              from: { type: "datetime" },
-              limit: { type: "integer", default: 10 },
+              from: arg(z.coerce.date().optional()),
+              limit: arg(z.coerce.number().int().default(10)),
             },
-            handler: async (args) => {
-              return { events: await fetchEvents(args) }
+            handler: async ({ from, limit }) => {
+              return { events: await fetchEvents({ from, limit }) }
             },
           },
           create: {
             description: "Create event",
             args: {
-              title: { type: "string", required: true },
-              date: { type: "datetime", required: true },
+              title: arg(z.string().min(1)),
+              date: arg(z.coerce.date()),
             },
-            handler: async (args) => {
-              return { event: await createEvent(args) }
+            handler: async ({ title, date }) => {
+              return { event: await createEvent({ title, date }) }
             },
           },
         },
@@ -189,33 +234,6 @@ calendar events create --title "Meeting" --date 2026-02-02T10:00:00Z
 
 ---
 
-## Argument Types
-
-| Type       | Description                       | Example Value              |
-|------------|-----------------------------------|----------------------------|
-| `string`   | Text value                        | `"hello"`                  |
-| `integer`  | Whole number                      | `42`                       |
-| `number`   | Decimal number                    | `3.14`                     |
-| `boolean`  | `true` / `false`                  | `true`                     |
-| `flag`     | Presence-based boolean            | (no value needed)          |
-| `datetime` | ISO8601 date string → `Date`      | `2026-02-02T10:00:00Z`     |
-| `array`    | Comma-separated → `string[]`      | `"a,b,c"` → `["a","b","c"]`|
-
-### ArgumentDefinition
-
-```typescript
-interface ArgumentDefinition {
-  type: ArgumentType          // Required
-  description?: string        // Help text
-  required?: boolean          // Default: false
-  default?: unknown           // Default value
-  positional?: number         // Position index (0-based) for positional args
-  examples?: string[]         // Example values for help
-}
-```
-
----
-
 ## Positional Arguments
 
 Positional arguments allow cleaner syntax:
@@ -225,19 +243,19 @@ const commands = defineCommands({
   add: {
     description: "Add numbers",
     args: {
-      a: { type: "number", required: true, positional: 0 },
-      b: { type: "number", required: true, positional: 1 },
+      a: arg(z.coerce.number(), { positional: 0 }),
+      b: arg(z.coerce.number(), { positional: 1 }),
     },
-    handler: async (args) => ({ result: args.a + args.b }),
+    handler: async ({ a, b }) => ({ result: a + b }),
   },
 })
 ```
 
-Both syntaxes work:
+All syntaxes work:
 ```bash
 add 10 20          # Positional
 add --a 10 --b 20  # Named
-add -a 10 -b 20    # Short
+add -a 10 -b 20    # Short (first letter)
 ```
 
 ---
@@ -279,45 +297,6 @@ handler: async () => ({
 // → passed through unchanged
 ```
 
-### MCP Response Structure
-
-```typescript
-interface CallToolResult {
-  content: Array<TextContent | ImageContent>
-  isError?: boolean
-}
-
-interface TextContent {
-  type: "text"
-  text: string
-}
-
-interface ImageContent {
-  type: "image"
-  data: string      // base64 encoded
-  mimeType: string
-}
-```
-
-### Error Response
-
-Errors are returned with `isError: true` and structured error data:
-
-```typescript
-// Error response structure
-{
-  content: [{ type: "text", text: JSON.stringify({
-    error: {
-      code: AcliErrorCode,
-      message: string,
-      hint?: string,
-      examples?: string[]
-    }
-  })}],
-  isError: true
-}
-```
-
 ### Error Codes
 
 | Code               | Description                              |
@@ -334,59 +313,63 @@ Errors are returned with `isError: true` and structured error data:
 
 ACLI is designed with security in mind:
 
-- **No Shell Execution**: Commands are parsed and executed directly in-process. All input is treated as plain text.
+- **No Shell Execution**: Commands are parsed and executed directly in-process
 - **Command Whitelist**: Only registered commands can be executed
-- **Argument Validation**: Type checking before handler execution
+- **Argument Validation**: Zod validation before handler execution
 - **DoS Prevention**: Length and count limits on commands and arguments
 
 ---
 
-## Creating a Wrapper CLI
+## API Reference
 
-To create a domain-specific CLI tool (e.g., for Google Ads, AWS, etc.):
+### `registerAcli(server, commands, options)`
+
+Register commands as an MCP tool.
 
 ```typescript
-#!/usr/bin/env node
-// google-ads-cli.mjs
-import { defineCommands, runCli } from "@lifeprompt/acli"
-
-// Your authentication logic
-const auth = await authenticate()
-
-const commands = defineCommands({
-  campaigns: {
-    description: "Manage campaigns",
-    subcommands: {
-      list: {
-        description: "List campaigns",
-        args: {
-          status: { type: "string", default: "ENABLED" },
-        },
-        handler: async (args) => {
-          const campaigns = await auth.client.campaigns.list(args.status)
-          return { campaigns }
-        },
-      },
-    },
-  },
+registerAcli(server, commands, {
+  name: "tool_name",           // MCP tool name
+  description: "Base desc.",   // Optional, auto-generates command list
 })
 
-runCli({ commands })
+// Or with just name
+registerAcli(server, commands, "tool_name")
+```
+
+### `runCli({ commands, args? })`
+
+Run as standalone CLI.
+
+```typescript
+runCli({ commands })                          // Uses process.argv
+runCli({ commands, args: ["add", "1", "2"] }) // Custom args
+```
+
+### `createAcli(commands)`
+
+Create a tool definition for manual integration.
+
+```typescript
+const tool = createAcli(commands)
+const result = await tool.execute({ command: "add 1 2" })
 ```
 
 ---
 
 ## TypeScript Types
 
-All types are exported for extension:
+All types are exported:
 
 ```typescript
 import type {
+  // Argument types
+  ArgSchema,
+  ArgMeta,
+  ArgsDefinition,
+  InferArgs,
   // Command types
   CommandDefinition,
-  ArgumentDefinition,
-  ArgumentType,
-  ParsedArgs,
+  CommandRegistry,
   // MCP response types
   CallToolResult,
   TextContent,
@@ -398,7 +381,16 @@ import type {
   AcliToolOptions,
   CliOptions,
 } from "@lifeprompt/acli"
+
+// Helper functions
+import { arg, defineCommands } from "@lifeprompt/acli"
 ```
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup, release flow, and guidelines.
 
 ---
 

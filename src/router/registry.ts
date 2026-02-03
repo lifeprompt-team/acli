@@ -2,33 +2,76 @@
  * Command registry and definition helpers
  */
 
-export type ArgumentType =
-  | 'string'
-  | 'integer'
-  | 'number'
-  | 'boolean'
-  | 'flag'
-  | 'datetime'
-  | 'array'
+import type { ZodType } from 'zod'
 
-export interface ArgumentDefinition {
-  type: ArgumentType
-  description?: string
-  required?: boolean
-  default?: unknown
-  examples?: string[]
+// ============================================================================
+// Zod-based Argument Schema
+// ============================================================================
+
+/**
+ * Metadata for CLI argument (positional index, examples, etc.)
+ */
+export interface ArgMeta {
   /** Position index for positional arguments (0-based). Allows `add 10 20` instead of `add --a 10 --b 20` */
   positional?: number
+  /** Example values for help text */
+  examples?: string[]
+  /** Description for help text */
+  description?: string
 }
 
-export interface CommandDefinition {
+/**
+ * Argument schema wrapper combining Zod schema with CLI metadata
+ */
+export interface ArgSchema<T = unknown> {
+  schema: ZodType<T>
+  meta: ArgMeta
+}
+
+/**
+ * Create an argument schema with metadata
+ *
+ * @example
+ * const args = {
+ *   name: arg(z.string(), { positional: 0 }),
+ *   count: arg(z.coerce.number().int().default(10)),
+ *   verbose: arg(z.boolean().default(false)),
+ * }
+ */
+export function arg<T>(schema: ZodType<T>, meta: ArgMeta = {}): ArgSchema<T> {
+  return { schema, meta }
+}
+
+/**
+ * Type for args definition using Zod schemas
+ */
+export type ArgsDefinition = Record<string, ArgSchema>
+
+/**
+ * Infer the parsed args type from an ArgsDefinition
+ *
+ * @example
+ * const argsDef = {
+ *   name: arg(z.string()),
+ *   count: arg(z.coerce.number().default(10)),
+ * }
+ * type Args = InferArgs<typeof argsDef>
+ * // { name: string; count: number }
+ */
+export type InferArgs<T extends ArgsDefinition> = {
+  [K in keyof T]: T[K] extends ArgSchema<infer U> ? U : never
+}
+
+// ============================================================================
+// Command Definition
+// ============================================================================
+
+export interface CommandDefinition<TArgs extends ArgsDefinition = ArgsDefinition> {
   description: string
-  subcommands?: Record<string, CommandDefinition>
-  args?: Record<string, ArgumentDefinition>
-  handler?: (args: ParsedArgs) => Promise<unknown>
+  subcommands?: CommandRegistry
+  args?: TArgs
+  handler?: (args: InferArgs<TArgs>) => Promise<unknown>
 }
-
-export type ParsedArgs = Record<string, unknown>
 
 export type CommandRegistry = Record<string, CommandDefinition>
 

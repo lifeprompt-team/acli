@@ -1,40 +1,34 @@
 /**
- * Argument parser
+ * Argument parser using Zod schemas
  */
 
+import { z } from 'zod'
 import { type AcliError, error } from '../response/types'
-import type { ArgumentDefinition, ParsedArgs } from '../router/registry'
+import type { ArgSchema, ArgsDefinition, InferArgs } from '../router/registry'
 
-export type ParseArgsResult = { ok: true; value: ParsedArgs } | { ok: false; error: AcliError }
+export type ParseArgsResult<T> = { ok: true; value: T } | { ok: false; error: AcliError }
 
 /**
- * Parse argument tokens into a structured object
+ * Parse argument tokens into a structured object using Zod schemas
  */
-export function parseArgs(
+export function parseArgs<T extends ArgsDefinition>(
   tokens: string[],
-  argDefs: Record<string, ArgumentDefinition>,
-): ParseArgsResult {
-  const result: ParsedArgs = {}
+  argDefs: T,
+): ParseArgsResult<InferArgs<T>> {
+  const rawValues: Record<string, unknown> = {}
 
-  // Set defaults
-  for (const [name, def] of Object.entries(argDefs)) {
-    if (def.default !== undefined) {
-      result[name] = def.default
-    }
-  }
-
-  // Build positional args map: position -> { name, def }
-  const positionalArgs = new Map<number, { name: string; def: ArgumentDefinition }>()
-  for (const [name, def] of Object.entries(argDefs)) {
-    if (def.positional !== undefined) {
-      positionalArgs.set(def.positional, { name, def })
+  // Build positional args map: position -> { name, schema }
+  const positionalArgs = new Map<number, { name: string; schema: ArgSchema }>()
+  for (const [name, argSchema] of Object.entries(argDefs)) {
+    if (argSchema.meta.positional !== undefined) {
+      positionalArgs.set(argSchema.meta.positional, { name, schema: argSchema })
     }
   }
 
   // Collect positional values (non-option tokens)
   const positionalValues: string[] = []
 
-  // Parse tokens
+  // Parse tokens into raw values
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i]
 
@@ -42,9 +36,9 @@ export function parseArgs(
       // Long option
       const [key, inlineValue] = token.slice(2).split('=')
       const argName = key.replace(/-/g, '_')
-      const def = findArgDef(argDefs, key)
+      const argSchema = argDefs[argName] ?? argDefs[key]
 
-      if (!def) {
+      if (!argSchema) {
         return {
           ok: false,
           error: error('VALIDATION_ERROR', `Unknown option: --${key}`, {
@@ -53,17 +47,13 @@ export function parseArgs(
         }
       }
 
-      if (def.type === 'flag') {
-        result[argName] = true
+      // Check if it's a flag (boolean with default false)
+      const isFlag = isFlagSchema(argSchema.schema)
+
+      if (isFlag) {
+        rawValues[argName] = true
       } else if (inlineValue !== undefined) {
-        const parsed = parseValue(inlineValue, def.type)
-        if (parsed.error) {
-          return {
-            ok: false,
-            error: error('VALIDATION_ERROR', `Invalid value for --${key}: ${parsed.error}`),
-          }
-        }
-        result[argName] = parsed.value
+        rawValues[argName] = inlineValue
       } else {
         // Next token is the value
         i++
@@ -73,45 +63,33 @@ export function parseArgs(
             error: error('VALIDATION_ERROR', `Option --${key} requires a value`),
           }
         }
-        const parsed = parseValue(tokens[i], def.type)
-        if (parsed.error) {
-          return {
-            ok: false,
-            error: error('VALIDATION_ERROR', `Invalid value for --${key}: ${parsed.error}`),
-          }
-        }
-        result[argName] = parsed.value
+        rawValues[argName] = tokens[i]
       }
     } else if (token.startsWith('-') && token.length === 2) {
       // Short option
-      const key = token.slice(1)
-      const def = findArgDefByShort(argDefs, key)
+      const shortKey = token.slice(1)
+      const found = findArgByShortKey(argDefs, shortKey)
 
-      if (!def) {
+      if (!found) {
         return {
           ok: false,
-          error: error('VALIDATION_ERROR', `Unknown option: -${key}`),
+          error: error('VALIDATION_ERROR', `Unknown option: -${shortKey}`),
         }
       }
 
-      if (def.def.type === 'flag') {
-        result[def.name] = true
+      const isFlag = isFlagSchema(found.schema.schema)
+
+      if (isFlag) {
+        rawValues[found.name] = true
       } else {
         i++
         if (i >= tokens.length) {
           return {
             ok: false,
-            error: error('VALIDATION_ERROR', `Option -${key} requires a value`),
+            error: error('VALIDATION_ERROR', `Option -${shortKey} requires a value`),
           }
         }
-        const parsed = parseValue(tokens[i], def.def.type)
-        if (parsed.error) {
-          return {
-            ok: false,
-            error: error('VALIDATION_ERROR', `Invalid value for -${key}: ${parsed.error}`),
-          }
-        }
-        result[def.name] = parsed.value
+        rawValues[found.name] = tokens[i]
       }
     } else {
       // Positional argument - collect for later processing
@@ -122,104 +100,64 @@ export function parseArgs(
   // Process positional arguments
   for (let pos = 0; pos < positionalValues.length; pos++) {
     const argInfo = positionalArgs.get(pos)
-    if (argInfo && result[argInfo.name] === undefined) {
-      const parsed = parseValue(positionalValues[pos], argInfo.def.type)
-      if (parsed.error) {
-        return {
-          ok: false,
-          error: error('VALIDATION_ERROR', `Invalid value at position ${pos}: ${parsed.error}`),
-        }
-      }
-      result[argInfo.name] = parsed.value
+    if (argInfo && rawValues[argInfo.name] === undefined) {
+      rawValues[argInfo.name] = positionalValues[pos]
     }
   }
 
-  // Check required args
-  for (const [name, def] of Object.entries(argDefs)) {
-    if (def.required && result[name] === undefined) {
-      const hint =
-        def.positional !== undefined
-          ? `Provide value at position ${def.positional} or use --${name} <value>`
-          : `Provide --${name} <value>`
-      return {
-        ok: false,
-        error: error('VALIDATION_ERROR', `Missing required argument: ${name}`, { hint }),
-      }
+  // Build Zod object schema and validate
+  const schemaShape: Record<string, z.ZodType> = {}
+  for (const [name, argSchema] of Object.entries(argDefs)) {
+    schemaShape[name] = argSchema.schema
+  }
+
+  const objectSchema = z.object(schemaShape)
+  const parseResult = objectSchema.safeParse(rawValues)
+
+  if (!parseResult.success) {
+    const issues = parseResult.error.issues
+    const firstIssue = issues[0]
+    const path = firstIssue.path.join('.')
+    const message = path ? `Invalid value for ${path}: ${firstIssue.message}` : firstIssue.message
+
+    // Provide hint for missing required fields
+    const hint =
+      firstIssue.code === 'invalid_type' &&
+      (firstIssue as { received?: string }).received === 'undefined'
+        ? `Provide --${path} <value>`
+        : undefined
+
+    return {
+      ok: false,
+      error: error('VALIDATION_ERROR', message, hint ? { hint } : undefined),
     }
   }
 
-  return { ok: true, value: result }
+  return { ok: true, value: parseResult.data as InferArgs<T> }
 }
 
-function findArgDef(
-  defs: Record<string, ArgumentDefinition>,
-  key: string,
-): ArgumentDefinition | undefined {
-  // Try exact match
-  if (defs[key]) return defs[key]
-  // Try with underscores
-  const underscore = key.replace(/-/g, '_')
-  if (defs[underscore]) return defs[underscore]
-  return undefined
+/**
+ * Check if a Zod schema represents a flag (boolean with default)
+ */
+function isFlagSchema(schema: z.ZodType): boolean {
+  if (schema instanceof z.ZodDefault) {
+    const inner = schema._def.innerType
+    return inner instanceof z.ZodBoolean
+  }
+  return false
 }
 
-function findArgDefByShort(
-  defs: Record<string, ArgumentDefinition>,
+/**
+ * Find argument by short key (first letter of name)
+ */
+function findArgByShortKey(
+  defs: ArgsDefinition,
   shortKey: string,
-): { name: string; def: ArgumentDefinition } | undefined {
-  for (const [name, def] of Object.entries(defs)) {
+): { name: string; schema: ArgSchema } | undefined {
+  for (const [name, schema] of Object.entries(defs)) {
     if (name[0] === shortKey) {
-      return { name, def }
+      return { name, schema }
     }
   }
   return undefined
-}
-
-function parseValue(
-  value: string,
-  type: ArgumentDefinition['type'],
-): { value: unknown; error?: string } {
-  switch (type) {
-    case 'string':
-      return { value }
-
-    case 'integer': {
-      const num = parseInt(value, 10)
-      if (Number.isNaN(num)) {
-        return { value: undefined, error: 'expected integer' }
-      }
-      return { value: num }
-    }
-
-    case 'number': {
-      const num = parseFloat(value)
-      if (Number.isNaN(num)) {
-        return { value: undefined, error: 'expected number' }
-      }
-      return { value: num }
-    }
-
-    case 'boolean':
-      if (value === 'true' || value === '1') return { value: true }
-      if (value === 'false' || value === '0') return { value: false }
-      return { value: undefined, error: 'expected true or false' }
-
-    case 'flag':
-      return { value: true }
-
-    case 'datetime': {
-      // Basic ISO8601 validation
-      const date = new Date(value)
-      if (Number.isNaN(date.getTime())) {
-        return { value: undefined, error: 'expected ISO8601 date' }
-      }
-      return { value: date }
-    }
-
-    case 'array':
-      return { value: value.split(',') }
-
-    default:
-      return { value }
-  }
 }
