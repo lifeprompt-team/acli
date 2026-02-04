@@ -26,6 +26,8 @@ npm install @lifeprompt/acli zod
 pnpm add @lifeprompt/acli zod
 ```
 
+https://github.com/user-attachments/assets/c4b2a395-446c-4178-b552-9868ee40403c
+
 ## Quick Start
 
 ### MCP Server Integration
