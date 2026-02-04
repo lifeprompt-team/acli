@@ -398,7 +398,8 @@ import { arg, defineCommand, cmd } from "@lifeprompt/acli"
 ## Documentation
 
 - [Examples](./examples/README.md) - Step-by-step examples
-- [AGENTS.md](./AGENTS.md) - Guide for coding agents (Cursor, Copilot, etc.) to build ACLI tools
+- [Migration Guide](./docs/MIGRATION.md) - Migrate from MCP SDK to ACLI
+- [AGENTS.md](./AGENTS.md) - Guide for coding agents (Cursor, Copilot, etc.)
 - [Architecture](./docs/ARCHITECTURE.md) - Internal design and module structure
 - [Specification](./docs/SPEC.md) - Full protocol specification
 
