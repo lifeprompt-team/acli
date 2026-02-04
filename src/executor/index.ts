@@ -56,6 +56,19 @@ export async function executeCommand(
     return { result: handleVersion(), isError: false }
   }
 
+  // Check for --help or -h flag
+  const helpFlagIndex = tokens.findIndex((t) => t === '--help' || t === '-h')
+  if (helpFlagIndex !== -1) {
+    // Tokens before --help are the command path for help
+    const helpPath = tokens.slice(0, helpFlagIndex)
+    return { result: handleHelp(commands, helpPath), isError: false }
+  }
+
+  // Check for --version or -v flag
+  if (tokens.includes('--version') || tokens.includes('-v')) {
+    return { result: handleVersion(), isError: false }
+  }
+
   // Extract command path
   const [commandPath, argTokens] = extractCommandPath(commands, tokens)
   if (commandPath.length === 0) {
