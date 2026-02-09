@@ -78,6 +78,201 @@ describe('argument parser', () => {
     })
   })
 
+  describe('combined short options', () => {
+    it('combines multiple boolean short flags: -vq', () => {
+      const argDefs = {
+        verbose: arg(z.boolean().default(false), { short: 'v' }),
+        quiet: arg(z.boolean().default(false), { short: 'q' }),
+      }
+      const result = parseArgs(['-vq'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.verbose).toBe(true)
+        expect(result.value.quiet).toBe(true)
+      }
+    })
+
+    it('combines three boolean short flags: -abc', () => {
+      const argDefs = {
+        all: arg(z.boolean().default(false), { short: 'a' }),
+        bold: arg(z.boolean().default(false), { short: 'b' }),
+        color: arg(z.boolean().default(false), { short: 'c' }),
+      }
+      const result = parseArgs(['-abc'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.all).toBe(true)
+        expect(result.value.bold).toBe(true)
+        expect(result.value.color).toBe(true)
+      }
+    })
+
+    it('short option with attached value: -Hvalue', () => {
+      const argDefs = {
+        header: arg(z.string(), { short: 'H' }),
+      }
+      const result = parseArgs(['-HBearer_token'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.header).toBe('Bearer_token')
+      }
+    })
+
+    it('short option with = value: -H=value', () => {
+      const argDefs = {
+        header: arg(z.string(), { short: 'H' }),
+      }
+      const result = parseArgs(['-H=Bearer_token'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.header).toBe('Bearer_token')
+      }
+    })
+
+    it('combined flags + value option with space: -vH value', () => {
+      const argDefs = {
+        verbose: arg(z.boolean().default(false), { short: 'v' }),
+        header: arg(z.string(), { short: 'H' }),
+      }
+      const result = parseArgs(['-vH', 'Bearer_token'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.verbose).toBe(true)
+        expect(result.value.header).toBe('Bearer_token')
+      }
+    })
+
+    it('combined flags + attached value: -vHvalue', () => {
+      const argDefs = {
+        verbose: arg(z.boolean().default(false), { short: 'v' }),
+        header: arg(z.string(), { short: 'H' }),
+      }
+      const result = parseArgs(['-vHBearer_token'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.verbose).toBe(true)
+        expect(result.value.header).toBe('Bearer_token')
+      }
+    })
+
+    it('combined flags + = value: -vH=value', () => {
+      const argDefs = {
+        verbose: arg(z.boolean().default(false), { short: 'v' }),
+        header: arg(z.string(), { short: 'H' }),
+      }
+      const result = parseArgs(['-vH=Bearer_token'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.verbose).toBe(true)
+        expect(result.value.header).toBe('Bearer_token')
+      }
+    })
+
+    it('rejects unknown short option in combination', () => {
+      const argDefs = {
+        verbose: arg(z.boolean().default(false), { short: 'v' }),
+      }
+      const result = parseArgs(['-vx'], argDefs)
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.error.error.code).toBe('VALIDATION_ERROR')
+        expect(result.error.error.message).toContain('-x')
+      }
+    })
+
+    it('rejects multi-char token starting with - when no short alias matches', () => {
+      const argDefs = {
+        name: arg(z.string()),
+      }
+      const result = parseArgs(['-abc'], argDefs)
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.error.error.code).toBe('VALIDATION_ERROR')
+      }
+    })
+
+    it('value-taking short option at end of combination requires next token', () => {
+      const argDefs = {
+        verbose: arg(z.boolean().default(false), { short: 'v' }),
+        header: arg(z.string(), { short: 'H' }),
+      }
+      const result = parseArgs(['-vH'], argDefs)
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.error.error.message).toContain('-H')
+        expect(result.error.error.message).toContain('requires a value')
+      }
+    })
+
+    it('accumulates array via combined short option', () => {
+      const argDefs = {
+        verbose: arg(z.boolean().default(false), { short: 'v' }),
+        env: arg(z.array(z.string()), { short: 'e' }),
+      }
+      const result = parseArgs(['-ve', 'FOO=1', '-ve', 'BAR=2'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.verbose).toBe(true)
+        expect(result.value.env).toEqual(['FOO=1', 'BAR=2'])
+      }
+    })
+
+    it('repeated same flag: -vv is same as -v', () => {
+      const argDefs = {
+        verbose: arg(z.boolean().default(false), { short: 'v' }),
+      }
+      const result = parseArgs(['-vv'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.verbose).toBe(true)
+      }
+    })
+
+    it('-H= (equals with empty value) passes empty string', () => {
+      const argDefs = {
+        header: arg(z.string(), { short: 'H' }),
+      }
+      const result = parseArgs(['-H='], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.header).toBe('')
+      }
+    })
+
+    it('short option with negative number as attached value: -n-5', () => {
+      const argDefs = {
+        num: arg(z.coerce.number(), { short: 'n' }),
+      }
+      const result = parseArgs(['-n-5'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.num).toBe(-5)
+      }
+    })
+
+    it('short option with numeric attached value: -n10', () => {
+      const argDefs = {
+        num: arg(z.coerce.number(), { short: 'n' }),
+      }
+      const result = parseArgs(['-n10'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.num).toBe(10)
+      }
+    })
+
+    it('single dash "-" is treated as positional, not short option', () => {
+      const argDefs = {
+        file: arg(z.string(), { positional: 0 }),
+      }
+      const result = parseArgs(['-'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.file).toBe('-')
+      }
+    })
+  })
+
   describe('type coercion', () => {
     it('coerces string to number', () => {
       const argDefs = {

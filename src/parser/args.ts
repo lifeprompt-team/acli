@@ -96,31 +96,46 @@ export function parseArgs<T extends ArgsDefinition>(
         }
         setArgValue(rawValues, argName, tokens[i], argSchema.schema)
       }
-    } else if (token.startsWith('-') && token.length === 2) {
-      // Short option
-      const shortKey = token.slice(1)
-      const found = findArgByShortKey(argDefs, shortKey)
+    } else if (token.startsWith('-') && !token.startsWith('--') && token.length >= 2) {
+      // Short option(s) - supports combining: -abc = -a -b -c, -Hvalue, -H=value
+      const chars = token.slice(1)
 
-      if (!found) {
-        return {
-          ok: false,
-          error: error('VALIDATION_ERROR', `Unknown option: -${shortKey}`),
-        }
-      }
+      for (let ci = 0; ci < chars.length; ci++) {
+        const shortKey = chars[ci]
+        const found = findArgByShortKey(argDefs, shortKey)
 
-      const isFlag = isFlagSchema(found.schema.schema)
-
-      if (isFlag) {
-        rawValues[found.name] = true
-      } else {
-        i++
-        if (i >= tokens.length) {
+        if (!found) {
           return {
             ok: false,
-            error: error('VALIDATION_ERROR', `Option -${shortKey} requires a value`),
+            error: error('VALIDATION_ERROR', `Unknown option: -${shortKey}`),
           }
         }
-        setArgValue(rawValues, found.name, tokens[i], found.schema.schema)
+
+        const isFlag = isFlagSchema(found.schema.schema)
+
+        if (isFlag) {
+          rawValues[found.name] = true
+        } else {
+          // This option takes a value — consume the rest of this token or the next token
+          const remaining = chars.slice(ci + 1)
+
+          if (remaining.length > 0) {
+            // Attached value: -Hvalue or -H=value
+            const value = remaining.startsWith('=') ? remaining.slice(1) : remaining
+            setArgValue(rawValues, found.name, value, found.schema.schema)
+          } else {
+            // Next token is the value: -H value
+            i++
+            if (i >= tokens.length) {
+              return {
+                ok: false,
+                error: error('VALIDATION_ERROR', `Option -${shortKey} requires a value`),
+              }
+            }
+            setArgValue(rawValues, found.name, tokens[i], found.schema.schema)
+          }
+          break // Value-taking option consumes the rest; stop processing this token
+        }
       }
     } else {
       // Positional argument - collect for later processing

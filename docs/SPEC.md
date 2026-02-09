@@ -578,7 +578,15 @@ args: {
 
 Without `short`, only the long option (`--name`) is available.
 
-**Not supported:** Combined short options (`-abc` as shorthand for `-a -b -c`) and value-attached short options (`-n10` as shorthand for `-n 10`) are not supported. Each short option must be specified separately.
+**Combined short options** are supported:
+
+- `-abc` → `-a -b -c` (combines boolean flags)
+- `-vH value` → `-v -H value` (combines boolean flag with value-taking option)
+- `-Hvalue` → `-H value` (attached value without space)
+- `-H=value` → `-H value` (equals-separated attached value)
+- `-vHvalue` → `-v -H value` (combined flags + attached value)
+
+When a value-taking option appears in a combined sequence, it consumes the remaining characters as its value. If no characters remain, the next token is used.
 
 #### 7.3.3 Flag Negation (`--no-` prefix)
 
