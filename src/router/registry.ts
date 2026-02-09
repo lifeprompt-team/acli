@@ -200,3 +200,79 @@ export function listCommands(
 
   return result
 }
+
+// ============================================================================
+// MCP Tool Migration Helper
+// ============================================================================
+
+/**
+ * MCP-style tool definition for migration
+ *
+ * This interface represents a typical MCP tool definition that can be
+ * converted to ACLI commands using the `aclify` function.
+ */
+export interface McpToolLike {
+  /** Tool name (becomes command name) */
+  name: string
+  /** Tool description */
+  description: string
+  /** Zod schema object for input validation */
+  inputSchema: Record<string, ZodType>
+  /** Handler function */
+  handler: (args: Record<string, unknown>) => Promise<unknown>
+}
+
+/**
+ * Convert MCP-style tool definitions to ACLI CommandRegistry
+ *
+ * This is a migration helper for converting existing MCP tools to ACLI format.
+ * All arguments become named arguments (no positional support).
+ *
+ * @example
+ * ```typescript
+ * import { z } from "zod";
+ * import { aclify, registerAcli } from "@lifeprompt/acli";
+ *
+ * // Existing MCP-style tool definitions
+ * const mcpTools = [
+ *   {
+ *     name: "add",
+ *     description: "Add two numbers",
+ *     inputSchema: { a: z.number(), b: z.number() },
+ *     handler: async ({ a, b }) => ({ result: a + b }),
+ *   },
+ *   {
+ *     name: "multiply",
+ *     description: "Multiply two numbers",
+ *     inputSchema: { a: z.number(), b: z.number() },
+ *     handler: async ({ a, b }) => ({ result: a * b }),
+ *   },
+ * ];
+ *
+ * // Convert to ACLI commands
+ * const commands = aclify(mcpTools);
+ *
+ * // Register with MCP server
+ * registerAcli(server, commands, { name: "math" });
+ * ```
+ *
+ * @param tools - Array of MCP-style tool definitions
+ * @returns CommandRegistry for use with registerAcli
+ */
+export function aclify(tools: McpToolLike[]): CommandRegistry {
+  const registry: CommandRegistry = {}
+
+  for (const tool of tools) {
+    const args: ArgsDefinition = {}
+    for (const [key, schema] of Object.entries(tool.inputSchema)) {
+      args[key] = arg(schema)
+    }
+    registry[tool.name] = {
+      description: tool.description,
+      args,
+      handler: tool.handler,
+    }
+  }
+
+  return registry
+}

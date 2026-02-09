@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { type CallToolResult, createAcli, type TextContent } from '../mcp/tool'
-import { arg, type CommandRegistry, defineCommand } from '../router/registry'
+import { aclify, arg, type CommandRegistry, defineCommand } from '../router/registry'
 
 /**
  * Helper to extract JSON from MCP response
@@ -194,5 +194,62 @@ describe('MCP tool', () => {
       const data = extractJson(result) as Record<string, unknown>
       expect(data).toHaveProperty('inputSchema')
     })
+  })
+})
+
+describe('aclify integration', () => {
+  // Simulate MCP-style tool definitions
+  const mcpTools = [
+    {
+      name: 'add',
+      description: 'Add two numbers',
+      inputSchema: { a: z.coerce.number(), b: z.coerce.number() },
+      handler: async ({ a, b }: { a: number; b: number }) => ({ result: a + b }),
+    },
+    {
+      name: 'greet',
+      description: 'Greet someone',
+      inputSchema: { name: z.string().default('World') },
+      handler: async ({ name = 'World' }: { name?: string }) => ({
+        message: `Hello, ${name}!`,
+      }),
+    },
+  ]
+
+  const commands = aclify(mcpTools)
+  const tool = createAcli(commands)
+
+  it('executes aclified command', async () => {
+    const result = await tool.execute({ command: 'add --a 10 --b 20' })
+    expect(result.isError).toBeFalsy()
+
+    const data = extractJson(result)
+    expect(data).toEqual({ result: 30 })
+  })
+
+  it('uses default values in aclified command', async () => {
+    const result = await tool.execute({ command: 'greet' })
+    expect(result.isError).toBeFalsy()
+
+    const data = extractJson(result)
+    expect(data).toEqual({ message: 'Hello, World!' })
+  })
+
+  it('overrides default values in aclified command', async () => {
+    const result = await tool.execute({ command: 'greet --name Alice' })
+    expect(result.isError).toBeFalsy()
+
+    const data = extractJson(result)
+    expect(data).toEqual({ message: 'Hello, Alice!' })
+  })
+
+  it('shows aclified commands in help', async () => {
+    const result = await tool.execute({ command: 'help' })
+    expect(result.isError).toBeFalsy()
+
+    const data = extractJson(result) as { commands: Array<{ name: string }> }
+    const commandNames = data.commands.map((c) => c.name)
+    expect(commandNames).toContain('add')
+    expect(commandNames).toContain('greet')
   })
 })
