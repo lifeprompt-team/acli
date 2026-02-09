@@ -16,7 +16,7 @@ ACLI is a **CLI-style interface for MCP tools**. AI agents call MCP tools using 
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  MCP Server with ACLI                                                    │
 │                                                                          │
-│  registerAcli(server, { add, multiply }, { name: "math" })              │
+│  registerAcli(server, "math", { add, multiply })                        │
 │         │                                                                │
 │         ▼                                                                │
 │  Parse "add 10 20" → Execute handler → Return { result: 30 }            │
@@ -72,10 +72,7 @@ npx ts-node examples/01-getting-started.ts add 10 20
 ```typescript
 const server = new McpServer({ name: "math-server", version: "1.0.0" });
 
-registerAcli(server, { add, subtract, multiply, divide }, {
-  name: "math",
-  description: "Mathematical operations.",
-});
+registerAcli(server, "math", { add, subtract, multiply, divide }, "Mathematical operations.");
 ```
 
 **Claude Desktop config:**
@@ -155,10 +152,7 @@ const user = defineCommand({
 - `acli math add 1 2`, `acli time now`, `acli echo hello`
 
 ```typescript
-registerAcli(server, { math, time, echo }, {
-  name: "acli",
-  description: "Agent CLI with multiple namespaces.",
-});
+registerAcli(server, "acli", { math, time, echo }, "Agent CLI with multiple namespaces.");
 ```
 
 **AI agent calls:**
@@ -174,8 +168,8 @@ registerAcli(server, { math, time, echo }, {
 
 | Pattern | Tool Definition | AI Agent Calls |
 |---------|-----------------|----------------|
-| **Single** | `registerAcli(server, cmds, { name: "math" })` | `math add 1 2` |
-| **Composite** | `registerAcli(server, { math, time }, { name: "acli" })` | `acli math add 1 2` |
+| **Single** | `registerAcli(server, "math", cmds)` | `math add 1 2` |
+| **Composite** | `registerAcli(server, "acli", { math, time })` | `acli math add 1 2` |
 
 **Choose Single when:**
 - One focused domain (math, calendar)

@@ -50,12 +50,9 @@ function toMcpResponse(value: unknown, isError = false): CallToolResult {
 }
 
 /**
- * Options for registerAcli
+ * @deprecated Use description parameter directly: registerAcli(server, name, commands, description?)
  */
 export interface AcliToolOptions {
-  /** Tool name (default: 'cli') */
-  name: string
-  /** Base description (optional, will be enhanced with command list) */
   description?: string
 }
 
@@ -105,23 +102,24 @@ function generateDescription(commands: CommandRegistry, baseDescription?: string
  * });
  *
  * const server = new McpServer({ name: "my-server", version: "1.0.0" });
- * registerAcli(server, { simple, native }, { name: "my_tool", description: "My tool." });
+ * registerAcli(server, "my_tool", { simple, native });
+ * // with description:
+ * registerAcli(server, "my_tool", { simple, native }, "My tool.");
  * ```
  */
 export function registerAcli(
   mcp: McpServer,
+  name: string,
   commands: CommandRegistry,
-  options: string | AcliToolOptions = 'cli',
+  description?: string,
 ): void {
-  const opts: AcliToolOptions = typeof options === 'string' ? { name: options } : options
-
-  const toolName = opts.name
-  const description = generateDescription(commands, opts.description)
+  const toolName = name
+  const toolDescription = generateDescription(commands, description)
 
   mcp.registerTool(
     toolName,
     {
-      description,
+      description: toolDescription,
       inputSchema: {
         command: z
           .string()
@@ -162,7 +160,7 @@ export interface MCPToolDefinition {
 /**
  * Create a standalone acli tool definition (legacy API)
  *
- * @deprecated Use `registerAcli(mcp, commands)` for MCP SDK integration
+ * @deprecated Use `registerAcli(mcp, name, commands)` for MCP SDK integration
  */
 export function createAcli(commands: CommandRegistry): MCPToolDefinition {
   return {

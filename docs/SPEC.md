@@ -399,32 +399,40 @@ Output:
   "data": {
     "command": "calendar events",
     "description": "List calendar events with optional filters",
+    "usage": "events [--today] [--from <from>] [--to <to>] [--max <max>] [--calendar <calendar>]",
     "arguments": [
       {
         "name": "--today",
-        "type": "flag",
-        "description": "Show today's events only"
+        "type": "boolean",
+        "required": false,
+        "default": false,
+        "description": "Show today's events only",
+        "negatable": true
       },
       {
         "name": "--from",
-        "type": "datetime",
+        "type": "date",
+        "required": false,
         "description": "Start date/time (ISO8601 format)",
         "examples": ["2026-02-02", "2026-02-02T10:00:00Z"]
       },
       {
         "name": "--to",
-        "type": "datetime",
+        "type": "date",
+        "required": false,
         "description": "End date/time (ISO8601 format)"
       },
       {
         "name": "--max",
-        "type": "integer",
+        "type": "number",
+        "required": false,
         "default": 10,
         "description": "Maximum number of events to return"
       },
       {
         "name": "--calendar",
         "type": "string",
+        "required": false,
         "default": "primary",
         "description": "Calendar ID or 'primary'"
       }
@@ -529,10 +537,9 @@ Examples:
 | `string` | Any string | `"hello world"`, `file.txt` |
 | `integer` | Integer | `10`, `-5`, `0` |
 | `number` | Number (including decimals) | `3.14`, `-0.5` |
-| `boolean` | `true` / `false` | `true`, `false` |
-| `flag` | Presence means true | `--today` (no value) |
+| `boolean` | `true` / `false`, or flag (presence = true) | `--today`, `--verbose true` |
 | `datetime` | ISO8601 | `2026-02-02`, `2026-02-02T10:00:00Z` |
-| `array` | Comma-separated | `a,b,c` → `["a", "b", "c"]` |
+| `array` | Repeated options | `--tag a --tag b` → `["a", "b"]` |
 
 ### 7.3 Option Syntax
 
@@ -609,34 +616,36 @@ Non-array arguments that are repeated use the last value (last-wins):
 
 ### 7.4 Command Registration (Implementation)
 
+ACLI uses Zod schemas for type-safe argument definitions:
+
 ```typescript
-interface CommandDefinition {
-  name: string
-  description: string
-  subcommands?: CommandDefinition[]
-  arguments?: ArgumentDefinition[]
-  handler?: (args: ParsedArgs) => Promise<unknown>
-}
+import { z } from "zod"
+import { arg, defineCommand } from "@lifeprompt/acli"
 
-interface ArgumentDefinition {
-  name: string                    // "--from" or "fileId"
-  type: ArgumentType
-  required?: boolean
-  default?: unknown
-  description: string
-  examples?: string[]
-  validate?: (value: unknown) => boolean
-}
-
-type ArgumentType =
-  | "string"
-  | "integer"
-  | "number"
-  | "boolean"
-  | "flag"
-  | "datetime"
-  | "array"
+const events = defineCommand({
+  description: "List calendar events",
+  args: {
+    today: arg(z.boolean().default(false), { description: "Today's events" }),
+    from: arg(z.coerce.date().optional(), { description: "Start date (ISO8601)" }),
+    to: arg(z.coerce.date().optional(), { description: "End date (ISO8601)" }),
+    max: arg(z.coerce.number().default(10), { description: "Maximum results" }),
+    calendar: arg(z.string().default("primary"), { description: "Calendar ID" }),
+  },
+  handler: async ({ today, from, to, max = 10, calendar = "primary" }) => {
+    // ...
+    return { events: [] }
+  },
+})
 ```
+
+**`arg()` Metadata Options:**
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `positional` | `number` | Position index (0-based) for positional arguments |
+| `description` | `string` | Human-readable description |
+| `short` | `string` | Single-character alias (e.g., `'v'` for `-v`) |
+| `examples` | `string[]` | Example values for help output |
 
 ---
 
@@ -735,20 +744,15 @@ Elements required for a minimal ACLI implementation:
 ├── src/
 │   ├── parser/
 │   │   ├── tokenizer.ts      # POSIX-like tokenization
-│   │   ├── validator.ts      # Security validation
+│   │   ├── args.ts           # Argument parsing (options, flags, arrays)
 │   │   └── index.ts
 │   ├── router/
-│   │   ├── registry.ts       # Command registry
-│   │   ├── matcher.ts        # Command matching
+│   │   ├── registry.ts       # Command registry & routing
 │   │   └── index.ts
 │   ├── response/
-│   │   ├── types.ts          # AcliResponse types
-│   │   ├── errors.ts         # Standard error codes
-│   │   └── formatter.ts      # Response formatting
+│   │   └── types.ts          # AcliResponse types & error codes
 │   ├── discovery/
-│   │   ├── help.ts           # help command
-│   │   ├── schema.ts         # schema command
-│   │   └── version.ts        # version command
+│   │   └── index.ts          # help, schema, version commands
 │   ├── mcp/
 │   │   └── tool.ts           # MCP tool integration
 │   └── index.ts              # Public API
@@ -759,43 +763,43 @@ Elements required for a minimal ACLI implementation:
 ### 10.3 Usage Example
 
 ```typescript
-import { createAcli, defineCommand, arg } from '@lifeprompt/acli'
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
+import { z } from "zod"
+import { arg, cmd, defineCommand, registerAcli } from "@lifeprompt/acli"
 
-// Define commands
+// Define commands with subcommands
 const calendar = defineCommand({
   description: "Calendar commands",
   subcommands: {
-    events: {
+    events: cmd({
       description: "List calendar events",
-      arguments: [
-        { name: "--today", type: "flag", description: "Today's events" },
-        { name: "--max", type: "integer", default: 10 }
-      ],
-      handler: async (args) => {
-        const events = await googleCalendar.listEvents(args)
+      args: {
+        today: arg(z.boolean().default(false), { description: "Today's events" }),
+        max: arg(z.coerce.number().default(10), { description: "Maximum results" }),
+      },
+      handler: async ({ today, max = 10 }) => {
+        const events = await googleCalendar.listEvents({ today, max })
         return { events }
-      }
-    },
-    create: {
+      },
+    }),
+    create: cmd({
       description: "Create a calendar event",
-      arguments: [
-        { name: "--summary", type: "string", required: true },
-        { name: "--from", type: "datetime", required: true },
-        { name: "--to", type: "datetime", required: true }
-      ],
-      handler: async (args) => {
-        const event = await googleCalendar.createEvent(args)
+      args: {
+        summary: arg(z.string(), { positional: 0, description: "Event summary" }),
+        from: arg(z.coerce.date(), { description: "Start date/time (ISO8601)" }),
+        to: arg(z.coerce.date(), { description: "End date/time (ISO8601)" }),
+      },
+      handler: async ({ summary, from, to }) => {
+        const event = await googleCalendar.createEvent({ summary, from, to })
         return { event }
-      }
-    }
-  }
+      },
+    }),
+  },
 })
 
-// Create MCP tool
-const cliTool = createAcli(commands)
-
 // Register with MCP server
-mcpServer.registerTool(cliTool)
+const server = new McpServer({ name: "my-server", version: "1.0.0" })
+registerAcli(server, "workspace", { calendar }, "Google Workspace operations.")
 ```
 
 ---
@@ -830,7 +834,7 @@ subcommand      = 1*( ALPHA / "-" / "_" )
 argument        = positional / option
 positional      = value
 option          = short-opt / long-opt
-short-opt       = "-" ALPHA [ value ]
+short-opt       = "-" ALPHA SP value    ; value-attached form (-n10) is NOT supported
 long-opt        = "--" 1*( ALPHA / "-" ) [ "=" value / SP value ]
 value           = quoted-string / unquoted-string
 quoted-string   = DQUOTE *( escaped-char / safe-char ) DQUOTE

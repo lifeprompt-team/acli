@@ -85,17 +85,11 @@ import { registerAcli } from "@lifeprompt/acli";
 const server = new McpServer({ name: "my-server", version: "1.0.0" });
 
 // Single pattern: One domain = One tool
-registerAcli(server, { add, subtract, multiply }, {
-  name: "math",
-  description: "Mathematical operations.",
-});
+registerAcli(server, "math", { add, subtract, multiply });
 // AI calls: { "name": "math", "arguments": { "command": "add 10 20" } }
 
 // Composite pattern: Multiple domains in one tool
-registerAcli(server, { math, time, echo }, {
-  name: "acli",
-  description: "Agent CLI with multiple namespaces.",
-});
+registerAcli(server, "acli", { math, time, echo }, "Agent CLI with multiple namespaces.");
 // AI calls: { "name": "acli", "arguments": { "command": "math add 10 20" } }
 ```
 
@@ -117,17 +111,14 @@ args: {
   // Enum
   format: arg(z.enum(["json", "csv"]).default("json")),
 
-  // Boolean flag (--verbose)
-  verbose: arg(z.boolean().default(false)),
+  // Boolean flag (--verbose or -v)
+  verbose: arg(z.boolean().default(false), { short: 'v' }),
 
   // Optional
   filter: arg(z.string().optional()),
 
   // Date (ISO8601 string → Date)
   date: arg(z.coerce.date()),
-
-  // Short alias (-v for --verbose)
-  verbose: arg(z.boolean().default(false), { short: 'v' }),
 
   // Short alias with value (-H "Bearer token")
   header: arg(z.string(), { short: 'H' }),
@@ -157,9 +148,7 @@ AI agents read descriptions to understand tools. Write them thoroughly.
 ### Tool-Level Description
 
 ```typescript
-registerAcli(server, commands, {
-  name: "bq",
-  description: `Google BigQuery operations.
+registerAcli(server, "bq", commands, `Google BigQuery operations.
 
 Commands: query, datasets, tables, schema
 
@@ -168,8 +157,7 @@ Quick Examples:
   tables my_dataset           # List tables
   query "SELECT * FROM t"     # Execute SQL
 
-Use 'help' for detailed command information.`,
-});
+Use 'help' for detailed command information.`);
 ```
 
 ### Command-Level Description
@@ -300,10 +288,7 @@ const create = defineCommand({
 // ============================================================
 
 export function registerMyTools(mcp: McpServer) {
-  registerAcli(mcp, { list, create }, {
-    name: "my-tool",
-    description: "...",
-  });
+  registerAcli(mcp, "my-tool", { list, create }, "...");
 }
 ```
 

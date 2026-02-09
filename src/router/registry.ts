@@ -97,7 +97,7 @@ export type CommandRegistry = Record<string, CommandDefinition<any>>
  * const multiply = defineCommand({ ... })
  *
  * // Pass commands directly to registerAcli
- * registerAcli(server, { add, multiply }, { name: "math" })
+ * registerAcli(server, "math", { add, multiply })
  */
 export function defineCommand<TArgs extends ArgsDefinition>(
   command: CommandDefinition<TArgs>,
@@ -284,7 +284,7 @@ export interface McpToolLike {
  * const commands = aclify(mcpTools);
  *
  * // Register with MCP server
- * registerAcli(server, commands, { name: "math" });
+ * registerAcli(server, "math", commands);
  * ```
  *
  * @param tools - Array of MCP-style tool definitions

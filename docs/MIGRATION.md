@@ -157,7 +157,7 @@ const user = defineCommand({
   },
 });
 
-registerAcli(server, "user", user);
+registerAcli(server, "user", { user });
 // AI calls: user list, user get 123, user create --name "John"
 ```
 
@@ -221,7 +221,7 @@ const user = defineCommand({
 import { registerAcli } from "@lifeprompt/acli";
 
 const server = new McpServer({ name: "my-server", version: "1.0.0" });
-registerAcli(server, "mytools", { user, project, ... });
+registerAcli(server, "mytools", { user, project });
 ```
 
 ### Step 5: Test with CLI (Optional)
@@ -270,9 +270,10 @@ inputSchema: {
 **ACLI:**
 ```typescript
 args: {
-  verbose: arg(z.boolean().default(false), { alias: "v", description: "Enable verbose output" }),
+  verbose: arg(z.boolean().default(false), { short: 'v', description: "Enable verbose output" }),
 }
 // Usage: mytools command --verbose or mytools command -v
+// Negate: mytools command --no-verbose
 ```
 
 ### Enum Values
