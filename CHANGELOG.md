@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.7.0-beta.2] - 2026-02-09
+
+### Added
+
+- **Combined short options:** `-abc` is now equivalent to `-a -b -c`. Boolean flags can be stacked, and a value-taking option can appear at the end (e.g., `-vH value`, `-vHvalue`, `-vH=value`).
+- **Attached short option values:** `-Hvalue` and `-H=value` are now supported as shorthand for `-H value`.
+- **Automatic coercion:** `z.number()`, `z.date()`, and `z.bigint()` passed to `arg()` are automatically converted to their `z.coerce.*` equivalents. No more "Expected number, received string" errors from forgetting `z.coerce`.
+- **Coercion hint in error messages:** When auto-coercion cannot reach the inner schema (e.g., wrapped in `ZodEffects` via `.refine()`), the error message now suggests using `z.coerce.*()`.
+
+### Fixed
+
+- Short options longer than 2 characters (e.g., `-abc`, `-Hvalue`) were silently treated as positional arguments instead of being parsed or rejected. They are now correctly handled.
+
+---
+
 ## [0.7.0-beta.1] - 2026-02-09
 
 ### Breaking Changes
