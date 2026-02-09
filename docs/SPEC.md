@@ -537,10 +537,45 @@ Examples:
 ### 7.3 Option Syntax
 
 ```
-Short:  -n 10
-Long:   --max 10
-Flag:   --today (no value)
-Combined: -n10 (short with value attached)
+Short:   -n 10
+Long:    --max 10
+Inline:  --max=10
+Flag:    --today (no value)
+End:     -- (all subsequent tokens treated as positional arguments)
+```
+
+#### 7.3.1 End of Options (`--`)
+
+The `--` token signals the end of named options. All tokens after `--` are treated as positional arguments, even if they start with `-`.
+
+```
+Input:  "echo -- --not-a-flag"
+Result: echo handler receives "--not-a-flag" as positional argument
+```
+
+This follows the POSIX convention and is useful when argument values start with dashes.
+
+#### 7.3.2 Array Arguments
+
+Array arguments use comma-separated values:
+
+```
+Input:  "cmd --tags a,b,c"
+Result: tags = ["a", "b", "c"]
+
+Input:  "cmd --ids 1,2,3"
+Result: ids = [1, 2, 3]
+```
+
+Use the `csvArg()` helper in the implementation:
+
+```typescript
+import { csvArg } from "@lifeprompt/acli"
+
+const args = {
+  tags: csvArg(),                              // string[]
+  ids: csvArg({ item: z.coerce.number() }),    // number[]
+}
 ```
 
 ### 7.4 Command Registration (Implementation)

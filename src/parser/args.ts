@@ -32,6 +32,14 @@ export function parseArgs<T extends ArgsDefinition>(
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i]
 
+    // End of options separator: everything after '--' is treated as positional
+    if (token === '--') {
+      for (let j = i + 1; j < tokens.length; j++) {
+        positionalValues.push(tokens[j])
+      }
+      break
+    }
+
     if (token.startsWith('--')) {
       // Long option
       const [key, inlineValue] = token.slice(2).split('=')

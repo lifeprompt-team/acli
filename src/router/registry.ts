@@ -2,7 +2,7 @@
  * Command registry and definition helpers
  */
 
-import type { ZodType } from 'zod'
+import { type ZodType, z } from 'zod'
 
 // ============================================================================
 // Zod-based Argument Schema
@@ -40,6 +40,47 @@ export interface ArgSchema<T = unknown> {
  */
 export function arg<T>(schema: ZodType<T>, meta: ArgMeta = {}): ArgSchema<T> {
   return { schema, meta }
+}
+
+/**
+ * Create a comma-separated array argument
+ *
+ * Accepts a comma-separated string and splits it into an array.
+ * Optionally applies a Zod schema to validate/transform each element.
+ *
+ * @example
+ * ```typescript
+ * const args = {
+ *   // String array: --tags "a,b,c" → ["a", "b", "c"]
+ *   tags: csvArg(),
+ *
+ *   // Number array: --ids "1,2,3" → [1, 2, 3]
+ *   ids: csvArg({ item: z.coerce.number() }),
+ *
+ *   // With metadata
+ *   emails: csvArg({ item: z.string().email(), meta: { description: "Email list" } }),
+ * }
+ * ```
+ */
+export function csvArg<T = string>(
+  options: {
+    /** Zod schema for each element (default: z.string()) */
+    item?: ZodType<T>
+    /** Argument metadata (positional, description, examples) */
+    meta?: ArgMeta
+    /** Separator (default: ",") */
+    separator?: string
+  } = {},
+): ArgSchema<T[]> {
+  const { item, meta = {}, separator = ',' } = options
+  const itemSchema = item ?? (z.string() as unknown as ZodType<T>)
+
+  const schema = z
+    .string()
+    .transform((s) => s.split(separator).map((v) => v.trim()))
+    .pipe(z.array(itemSchema))
+
+  return { schema: schema as unknown as ZodType<T[]>, meta }
 }
 
 /**

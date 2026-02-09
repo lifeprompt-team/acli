@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { parseArgs } from '../parser/args'
-import { arg } from '../router/registry'
+import { arg, csvArg } from '../router/registry'
 
 describe('argument parser', () => {
   describe('basic parsing', () => {
@@ -275,6 +275,131 @@ describe('argument parser', () => {
       if (result.ok) {
         expect(result.value.email).toBe('test@example.com')
       }
+    })
+  })
+
+  describe('end of options separator (--)', () => {
+    it('treats tokens after -- as positional arguments', () => {
+      const argDefs = {
+        message: arg(z.string(), { positional: 0 }),
+      }
+      const result = parseArgs(['--', '--not-a-flag'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.message).toBe('--not-a-flag')
+      }
+    })
+
+    it('mixes named options before -- and positional after', () => {
+      const argDefs = {
+        verbose: arg(z.boolean().default(false)),
+        message: arg(z.string(), { positional: 0 }),
+      }
+      const result = parseArgs(['--verbose', '--', '--some-text'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.verbose).toBe(true)
+        expect(result.value.message).toBe('--some-text')
+      }
+    })
+
+    it('handles multiple positional values after --', () => {
+      const argDefs = {
+        a: arg(z.string(), { positional: 0 }),
+        b: arg(z.string(), { positional: 1 }),
+      }
+      const result = parseArgs(['--', '--first', '--second'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.a).toBe('--first')
+        expect(result.value.b).toBe('--second')
+      }
+    })
+
+    it('-- with no following tokens is a no-op', () => {
+      const argDefs = {
+        name: arg(z.string().optional()),
+      }
+      const result = parseArgs(['--'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.name).toBeUndefined()
+      }
+    })
+  })
+
+  describe('csv array arguments', () => {
+    it('parses comma-separated string array', () => {
+      const argDefs = {
+        tags: csvArg(),
+      }
+      const result = parseArgs(['--tags', 'a,b,c'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.tags).toEqual(['a', 'b', 'c'])
+      }
+    })
+
+    it('trims whitespace around elements', () => {
+      const argDefs = {
+        tags: csvArg(),
+      }
+      const result = parseArgs(['--tags', 'a , b , c'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.tags).toEqual(['a', 'b', 'c'])
+      }
+    })
+
+    it('parses comma-separated number array', () => {
+      const argDefs = {
+        ids: csvArg({ item: z.coerce.number() }),
+      }
+      const result = parseArgs(['--ids', '1,2,3'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.ids).toEqual([1, 2, 3])
+      }
+    })
+
+    it('validates each element with item schema', () => {
+      const argDefs = {
+        emails: csvArg({ item: z.string().email() }),
+      }
+      const result = parseArgs(['--emails', 'a@b.com,invalid'], argDefs)
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.error.error.code).toBe('VALIDATION_ERROR')
+      }
+    })
+
+    it('handles single element', () => {
+      const argDefs = {
+        tags: csvArg(),
+      }
+      const result = parseArgs(['--tags', 'single'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.tags).toEqual(['single'])
+      }
+    })
+
+    it('supports custom separator', () => {
+      const argDefs = {
+        items: csvArg({ separator: '|' }),
+      }
+      const result = parseArgs(['--items', 'a|b|c'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.items).toEqual(['a', 'b', 'c'])
+      }
+    })
+
+    it('supports metadata', () => {
+      const argDefs = {
+        tags: csvArg({ meta: { description: 'Comma-separated tags' } }),
+      }
+      expect(argDefs.tags.meta.description).toBe('Comma-separated tags')
     })
   })
 
