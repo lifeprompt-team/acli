@@ -69,4 +69,4 @@ arg(z.boolean().default(false), { short: "v" })
 
 ## [0.6.x and earlier]
 
-See [git history](https://github.com/lifeprompt/acli/commits/main) for previous changes.
+See [git history](https://github.com/lifeprompt-team/acli/commits/main) for previous changes.
