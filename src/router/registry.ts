@@ -2,7 +2,7 @@
  * Command registry and definition helpers
  */
 
-import type { ZodType } from 'zod'
+import { z, type ZodType } from 'zod'
 
 // ============================================================================
 // Zod-based Argument Schema
@@ -41,7 +41,47 @@ export interface ArgSchema<T = unknown> {
  * }
  */
 export function arg<T>(schema: ZodType<T>, meta: ArgMeta = {}): ArgSchema<T> {
-  return { schema, meta }
+  return { schema: ensureCoerce(schema) as ZodType<T>, meta }
+}
+
+/**
+ * Ensure numeric, date, and bigint schemas use coercion for CLI string input.
+ *
+ * CLI arguments are always strings, so `z.number()` would fail with
+ * "Expected number, received string". This function automatically converts
+ * `z.number()` → `z.coerce.number()` (and similarly for date/bigint),
+ * preserving all checks (.int(), .min(), .max(), etc.) and wrappers (.optional(), .default()).
+ */
+function ensureCoerce(schema: z.ZodType): z.ZodType {
+  // Unwrap wrapper types recursively
+  if (schema instanceof z.ZodOptional) {
+    const inner = ensureCoerce(schema._def.innerType)
+    if (inner === schema._def.innerType) return schema
+    return new z.ZodOptional({ ...schema._def, innerType: inner }) as z.ZodType
+  }
+  if (schema instanceof z.ZodDefault) {
+    const inner = ensureCoerce(schema._def.innerType)
+    if (inner === schema._def.innerType) return schema
+    return new z.ZodDefault({ ...schema._def, innerType: inner }) as z.ZodType
+  }
+  if (schema instanceof z.ZodArray) {
+    const inner = ensureCoerce(schema._def.type)
+    if (inner === schema._def.type) return schema
+    return new z.ZodArray({ ...schema._def, type: inner }) as z.ZodType
+  }
+
+  // Leaf types that need coercion from string input
+  if (schema instanceof z.ZodNumber && !schema._def.coerce) {
+    return new z.ZodNumber({ ...schema._def, coerce: true })
+  }
+  if (schema instanceof z.ZodDate && !schema._def.coerce) {
+    return new z.ZodDate({ ...schema._def, coerce: true })
+  }
+  if (schema instanceof z.ZodBigInt && !schema._def.coerce) {
+    return new z.ZodBigInt({ ...schema._def, coerce: true })
+  }
+
+  return schema
 }
 
 /**

@@ -758,4 +758,135 @@ describe('argument parser', () => {
       }
     })
   })
+
+  describe('auto-coerce (z.number() → z.coerce.number())', () => {
+    it('z.number() is automatically coerced from string', () => {
+      const argDefs = {
+        count: arg(z.number()),
+      }
+      const result = parseArgs(['--count', '42'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.count).toBe(42)
+      }
+    })
+
+    it('z.number().int().min(0).max(100) preserves checks after coerce', () => {
+      const argDefs = {
+        age: arg(z.number().int().min(0).max(100)),
+      }
+      // Valid
+      const ok = parseArgs(['--age', '25'], argDefs)
+      expect(ok.ok).toBe(true)
+      if (ok.ok) expect(ok.value.age).toBe(25)
+
+      // Out of range
+      const fail = parseArgs(['--age', '200'], argDefs)
+      expect(fail.ok).toBe(false)
+
+      // Not int
+      const failFloat = parseArgs(['--age', '3.14'], argDefs)
+      expect(failFloat.ok).toBe(false)
+    })
+
+    it('z.number().default(10) works without coerce', () => {
+      const argDefs = {
+        count: arg(z.number().default(10)),
+      }
+      // Default value
+      const defaultResult = parseArgs([], argDefs)
+      expect(defaultResult.ok).toBe(true)
+      if (defaultResult.ok) expect(defaultResult.value.count).toBe(10)
+
+      // Override
+      const override = parseArgs(['--count', '99'], argDefs)
+      expect(override.ok).toBe(true)
+      if (override.ok) expect(override.value.count).toBe(99)
+    })
+
+    it('z.number().optional() works without coerce', () => {
+      const argDefs = {
+        count: arg(z.number().optional()),
+      }
+      // Omitted
+      const omitted = parseArgs([], argDefs)
+      expect(omitted.ok).toBe(true)
+      if (omitted.ok) expect(omitted.value.count).toBeUndefined()
+
+      // Provided
+      const provided = parseArgs(['--count', '7'], argDefs)
+      expect(provided.ok).toBe(true)
+      if (provided.ok) expect(provided.value.count).toBe(7)
+    })
+
+    it('z.date() is automatically coerced from string', () => {
+      const argDefs = {
+        date: arg(z.date()),
+      }
+      const result = parseArgs(['--date', '2026-02-09T10:00:00Z'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.date).toBeInstanceOf(Date)
+      }
+    })
+
+    it('z.bigint() is automatically coerced from string', () => {
+      const argDefs = {
+        big: arg(z.bigint()),
+      }
+      const result = parseArgs(['--big', '9007199254740993'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.big).toBe(9007199254740993n)
+      }
+    })
+
+    it('z.array(z.number()) inner elements are auto-coerced', () => {
+      const argDefs = {
+        nums: arg(z.array(z.number())),
+      }
+      const result = parseArgs(['--nums', '1', '--nums', '2', '--nums', '3'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.nums).toEqual([1, 2, 3])
+      }
+    })
+
+    it('z.coerce.number() is not double-wrapped', () => {
+      const argDefs = {
+        count: arg(z.coerce.number()),
+      }
+      const result = parseArgs(['--count', '42'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.count).toBe(42)
+      }
+    })
+
+    it('positional z.number() is auto-coerced', () => {
+      const argDefs = {
+        a: arg(z.number(), { positional: 0 }),
+        b: arg(z.number(), { positional: 1 }),
+      }
+      const result = parseArgs(['10', '20'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.a).toBe(10)
+        expect(result.value.b).toBe(20)
+      }
+    })
+
+    it('provides coerce hint when ensureCoerce cannot reach inner schema (e.g. ZodEffects)', () => {
+      // Simulate a case where ensureCoerce cannot auto-fix:
+      // z.number().refine() wraps in ZodEffects, which ensureCoerce does not traverse
+      const argDefs = {
+        count: arg(z.number().refine((n) => n > 0)),
+      }
+      const result = parseArgs(['--count', '42'], argDefs)
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.error.error.hint).toContain('z.coerce.number()')
+      }
+    })
+  })
 })

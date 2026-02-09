@@ -166,12 +166,16 @@ export function parseArgs<T extends ArgsDefinition>(
     const path = firstIssue.path.join('.')
     const message = path ? `Invalid value for ${path}: ${firstIssue.message}` : firstIssue.message
 
-    // Provide hint for missing required fields
-    const hint =
-      firstIssue.code === 'invalid_type' &&
-      (firstIssue as { received?: string }).received === 'undefined'
-        ? `Provide --${path} <value>`
-        : undefined
+    // Provide actionable hints based on error type
+    let hint: string | undefined
+    if (firstIssue.code === 'invalid_type') {
+      const { expected, received } = firstIssue as { expected?: string; received?: string }
+      if (received === 'undefined') {
+        hint = `Provide --${path} <value>`
+      } else if (received === 'string' && (expected === 'number' || expected === 'bigint' || expected === 'date')) {
+        hint = `Use z.coerce.${expected}() instead of z.${expected}() in the arg definition`
+      }
+    }
 
     return {
       ok: false,
