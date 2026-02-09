@@ -125,7 +125,20 @@ args: {
 
   // Date (ISO8601 string → Date)
   date: arg(z.coerce.date()),
+
+  // CSV array (comma-separated → string[])
+  tags: csvArg(),
+  // Usage: --tags "a,b,c" → ["a", "b", "c"]
+
+  // CSV array with typed items (comma-separated → number[])
+  ids: csvArg({ item: z.coerce.number() }),
+  // Usage: --ids "1,2,3" → [1, 2, 3]
 }
+```
+
+**Note:** Use `--` to pass values that start with dashes as positional arguments:
+```
+echo -- --not-a-flag   # "--not-a-flag" is treated as a positional value
 ```
 
 ---
