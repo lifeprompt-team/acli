@@ -40,36 +40,34 @@ export function parseArgs<T extends ArgsDefinition>(
       break
     }
 
-    if (token.startsWith('--no-') && token.length > 5) {
-      // --no- prefix: negate a boolean flag
-      const key = token.slice(5)
-      const argName = key.replace(/-/g, '_')
-      const argSchema = argDefs[argName]
-
-      if (!argSchema) {
-        return {
-          ok: false,
-          error: error('VALIDATION_ERROR', `Unknown option: ${token}`, {
-            hint: 'Check available options with help command',
-          }),
-        }
-      }
-
-      if (!isBooleanSchema(argSchema.schema)) {
-        return {
-          ok: false,
-          error: error('VALIDATION_ERROR', `Option --no-${key} can only be used with boolean flags`),
-        }
-      }
-
-      rawValues[argName] = false
-    } else if (token.startsWith('--')) {
+    if (token.startsWith('--')) {
       // Long option
       const [key, inlineValue] = token.slice(2).split('=')
       const argName = key.replace(/-/g, '_')
       const argSchema = argDefs[argName]
 
       if (!argSchema) {
+        // Try --no- negation: if key starts with "no-", check if the rest is a boolean flag
+        if (key.startsWith('no-') && key.length > 3 && inlineValue === undefined) {
+          const negatedKey = key.slice(3)
+          const negatedArgName = negatedKey.replace(/-/g, '_')
+          const negatedSchema = argDefs[negatedArgName]
+
+          if (negatedSchema && isBooleanSchema(negatedSchema.schema)) {
+            rawValues[negatedArgName] = false
+            continue
+          }
+          if (negatedSchema) {
+            return {
+              ok: false,
+              error: error(
+                'VALIDATION_ERROR',
+                `Option --no-${negatedKey} can only be used with boolean flags`,
+              ),
+            }
+          }
+        }
+
         return {
           ok: false,
           error: error('VALIDATION_ERROR', `Unknown option: --${key}`, {
@@ -78,7 +76,7 @@ export function parseArgs<T extends ArgsDefinition>(
         }
       }
 
-      // Check if it's a flag (boolean with default false)
+      // Check if it's a flag (boolean with default)
       const isFlag = isFlagSchema(argSchema.schema)
 
       if (isFlag) {
@@ -189,42 +187,42 @@ function setArgValue(
 }
 
 /**
- * Check if a Zod schema represents a flag (boolean with default)
+ * Unwrap ZodOptional / ZodDefault wrappers to get the inner schema type
  */
-function isFlagSchema(schema: z.ZodType): boolean {
-  if (schema instanceof z.ZodDefault) {
-    const inner = schema.removeDefault()
-    return inner instanceof z.ZodBoolean
-  }
+function unwrapSchema(schema: z.ZodType): z.ZodType {
+  if (schema instanceof z.ZodOptional) return unwrapSchema(schema.unwrap())
+  if (schema instanceof z.ZodDefault) return unwrapSchema(schema.removeDefault())
+  return schema
+}
+
+/**
+ * Check if the wrapper chain contains a ZodDefault
+ */
+function hasDefault(schema: z.ZodType): boolean {
+  if (schema instanceof z.ZodDefault) return true
+  if (schema instanceof z.ZodOptional) return hasDefault(schema.unwrap())
   return false
 }
 
 /**
- * Check if a Zod schema represents an array type (supports ZodArray, ZodDefault<ZodArray>, ZodOptional<ZodArray>)
- */
-function isArraySchema(schema: z.ZodType): boolean {
-  if (schema instanceof z.ZodArray) return true
-  if (schema instanceof z.ZodDefault) {
-    return schema.removeDefault() instanceof z.ZodArray
-  }
-  if (schema instanceof z.ZodOptional) {
-    return schema.unwrap() instanceof z.ZodArray
-  }
-  return false
-}
-
-/**
- * Check if a Zod schema represents a boolean type (supports ZodBoolean, ZodDefault<ZodBoolean>, ZodOptional<ZodBoolean>)
+ * Check if a Zod schema represents a boolean type (unwraps Optional/Default)
  */
 function isBooleanSchema(schema: z.ZodType): boolean {
-  if (schema instanceof z.ZodBoolean) return true
-  if (schema instanceof z.ZodDefault) {
-    return schema.removeDefault() instanceof z.ZodBoolean
-  }
-  if (schema instanceof z.ZodOptional) {
-    return schema.unwrap() instanceof z.ZodBoolean
-  }
-  return false
+  return unwrapSchema(schema) instanceof z.ZodBoolean
+}
+
+/**
+ * Check if a Zod schema represents a flag (boolean with default — presence means true)
+ */
+function isFlagSchema(schema: z.ZodType): boolean {
+  return isBooleanSchema(schema) && hasDefault(schema)
+}
+
+/**
+ * Check if a Zod schema represents an array type (unwraps Optional/Default)
+ */
+function isArraySchema(schema: z.ZodType): boolean {
+  return unwrapSchema(schema) instanceof z.ZodArray
 }
 
 /**

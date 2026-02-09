@@ -427,6 +427,30 @@ describe('argument parser', () => {
         expect(result.value.dry_run).toBe(false)
       }
     })
+
+    it('prefers literal arg name over --no- negation', () => {
+      const argDefs = {
+        no_reply: arg(z.boolean().default(false)),
+      }
+      // --no-reply matches literal arg "no_reply", should be treated as flag (true)
+      const result = parseArgs(['--no-reply'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.no_reply).toBe(true)
+      }
+    })
+
+    it('prefers literal arg name with value over --no- negation', () => {
+      const argDefs = {
+        no_reply_email: arg(z.string()),
+      }
+      // --no-reply-email matches literal arg "no_reply_email", treated as regular option
+      const result = parseArgs(['--no-reply-email', 'test@example.com'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.no_reply_email).toBe('test@example.com')
+      }
+    })
   })
 
   describe('repeated options (array accumulation)', () => {

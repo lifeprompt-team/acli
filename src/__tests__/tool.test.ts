@@ -203,6 +203,125 @@ describe('MCP tool', () => {
   })
 })
 
+describe('help output improvements', () => {
+  const search = defineCommand({
+    description: 'Search files in workspace',
+    args: {
+      query: arg(z.string(), { positional: 0, description: 'Search query' }),
+      path: arg(z.string().optional(), { positional: 1, description: 'Directory path' }),
+      verbose: arg(z.boolean().default(false), { short: 'v', description: 'Verbose output' }),
+      limit: arg(z.coerce.number().default(20), { description: 'Max results' }),
+      ext: arg(z.array(z.string()).optional(), { short: 'e', description: 'File extensions' }),
+      color: arg(z.boolean().default(true), { description: 'Colorize output' }),
+    },
+    handler: async () => ({ results: [] }),
+  })
+
+  const commands: CommandRegistry = { search }
+  const tool = createAcli(commands)
+
+  it('displays positional args with <name> format', async () => {
+    const result = await tool.execute({ command: 'help search' })
+    const data = extractJson(result) as { arguments: Array<{ name: string; positional?: number }> }
+
+    const queryArg = data.arguments.find((a) => a.positional === 0)
+    expect(queryArg).toBeDefined()
+    expect(queryArg!.name).toBe('<query>')
+
+    const pathArg = data.arguments.find((a) => a.positional === 1)
+    expect(pathArg).toBeDefined()
+    expect(pathArg!.name).toBe('<path>')
+  })
+
+  it('includes short field separately from name', async () => {
+    const result = await tool.execute({ command: 'help search' })
+    const data = extractJson(result) as {
+      arguments: Array<{ name: string; short?: string }>
+    }
+
+    // name should be machine-readable (--verbose), short alias in separate field
+    const verboseArg = data.arguments.find((a) => a.name === '--verbose')
+    expect(verboseArg).toBeDefined()
+    expect(verboseArg!.short).toBe('v')
+
+    const extArg = data.arguments.find((a) => a.name === '--ext')
+    expect(extArg).toBeDefined()
+    expect(extArg!.short).toBe('e')
+
+    // No short alias
+    const limitArg = data.arguments.find((a) => a.name === '--limit')
+    expect(limitArg!.short).toBeUndefined()
+  })
+
+  it('marks boolean args as negatable', async () => {
+    const result = await tool.execute({ command: 'help search' })
+    const data = extractJson(result) as {
+      arguments: Array<{ name: string; type: string; negatable?: boolean }>
+    }
+
+    const verboseArg = data.arguments.find((a) => a.name === '--verbose')
+    expect(verboseArg!.negatable).toBe(true)
+
+    const colorArg = data.arguments.find((a) => a.name === '--color')
+    expect(colorArg!.negatable).toBe(true)
+
+    // Non-boolean args should not have negatable
+    const limitArg = data.arguments.find((a) => a.name === '--limit')
+    expect(limitArg!.negatable).toBeUndefined()
+  })
+
+  it('shows array element type as string[]', async () => {
+    const result = await tool.execute({ command: 'help search' })
+    const data = extractJson(result) as {
+      arguments: Array<{ name: string; type: string }>
+    }
+
+    const extArg = data.arguments.find((a) => a.name === '--ext')
+    expect(extArg!.type).toBe('string[]')
+  })
+
+  it('generates usage line', async () => {
+    const result = await tool.execute({ command: 'help search' })
+    const data = extractJson(result) as { usage?: string }
+
+    expect(data.usage).toBeDefined()
+    expect(data.usage).toContain('search')
+    // Positional args
+    expect(data.usage).toContain('<query>')
+    expect(data.usage).toContain('[<path>]')
+    // Boolean flags
+    expect(data.usage).toContain('[--verbose]')
+    expect(data.usage).toContain('[--color]')
+    // Optional named
+    expect(data.usage).toContain('[--limit <number>]')
+    // Array
+    expect(data.usage).toContain('[--ext <string>...]')
+  })
+
+  it('generates usage line with required args first', async () => {
+    const result = await tool.execute({ command: 'help search' })
+    const data = extractJson(result) as { usage: string }
+
+    // <query> should come before [<path>]
+    const queryIdx = data.usage.indexOf('<query>')
+    const pathIdx = data.usage.indexOf('[<path>]')
+    expect(queryIdx).toBeLessThan(pathIdx)
+  })
+
+  it('omits usage and arguments for commands without args', async () => {
+    const noArgCmd = defineCommand({
+      description: 'No args command',
+      args: {},
+      handler: async () => ({ ok: true }),
+    })
+    const noArgTool = createAcli({ noarg: noArgCmd } as CommandRegistry)
+    const result = await noArgTool.execute({ command: 'help noarg' })
+    const data = extractJson(result) as { usage?: string; arguments?: unknown[] }
+    expect(data.usage).toBeUndefined()
+    expect(data.arguments).toBeUndefined()
+  })
+})
+
 describe('aclify integration', () => {
   // Simulate MCP-style tool definitions
   const mcpTools: McpToolLike[] = [

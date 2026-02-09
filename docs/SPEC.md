@@ -571,6 +571,8 @@ args: {
 
 Without `short`, only the long option (`--name`) is available.
 
+**Not supported:** Combined short options (`-abc` as shorthand for `-a -b -c`) and value-attached short options (`-n10` as shorthand for `-n 10`) are not supported. Each short option must be specified separately.
+
 #### 7.3.3 Flag Negation (`--no-` prefix)
 
 Boolean flags can be explicitly set to `false` using the `--no-` prefix:
