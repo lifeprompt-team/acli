@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { type CallToolResult, createAcli, type TextContent } from '../mcp/tool'
-import { aclify, arg, type CommandRegistry, defineCommand } from '../router/registry'
+import {
+  aclify,
+  arg,
+  type CommandRegistry,
+  defineCommand,
+  type McpToolLike,
+} from '../router/registry'
 
 /**
  * Helper to extract JSON from MCP response
@@ -199,18 +205,18 @@ describe('MCP tool', () => {
 
 describe('aclify integration', () => {
   // Simulate MCP-style tool definitions
-  const mcpTools = [
+  const mcpTools: McpToolLike[] = [
     {
       name: 'add',
       description: 'Add two numbers',
       inputSchema: { a: z.coerce.number(), b: z.coerce.number() },
-      handler: async ({ a, b }: { a: number; b: number }) => ({ result: a + b }),
+      handler: async ({ a, b }) => ({ result: a + b }),
     },
     {
       name: 'greet',
       description: 'Greet someone',
       inputSchema: { name: z.string().default('World') },
-      handler: async ({ name = 'World' }: { name?: string }) => ({
+      handler: async ({ name = 'World' }) => ({
         message: `Hello, ${name}!`,
       }),
     },

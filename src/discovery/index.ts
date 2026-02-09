@@ -137,19 +137,19 @@ function getSchemaInfo(argSchema: ArgSchema): {
   // Unwrap ZodOptional
   if (schema instanceof z.ZodOptional) {
     isRequired = false
-    schema = schema._def.innerType
+    schema = schema.unwrap()
   }
 
   // Unwrap ZodDefault
   if (schema instanceof z.ZodDefault) {
     isRequired = false
     defaultValue = schema._def.defaultValue()
-    schema = schema._def.innerType
+    schema = schema.removeDefault()
   }
 
   // Unwrap ZodEffects (preprocess, transform, refine)
   while (schema instanceof z.ZodEffects) {
-    schema = schema._def.schema
+    schema = schema.innerType()
   }
 
   // Get type name

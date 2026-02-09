@@ -123,7 +123,9 @@ export function registerAcli(
     {
       description,
       inputSchema: {
-        command: z.string().describe(`CLI command (e.g., '${Object.keys(commands)[0]} --help')`),
+        command: z
+          .string()
+          .describe(`CLI command (e.g., '${Object.keys(commands)[0] ?? 'help'} --help')`),
       },
     },
     async (params: { command: string }): Promise<CallToolResult> => {

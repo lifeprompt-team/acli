@@ -44,7 +44,7 @@ export function parseArgs<T extends ArgsDefinition>(
       // Long option
       const [key, inlineValue] = token.slice(2).split('=')
       const argName = key.replace(/-/g, '_')
-      const argSchema = argDefs[argName] ?? argDefs[key]
+      const argSchema = argDefs[argName]
 
       if (!argSchema) {
         return {
@@ -149,7 +149,7 @@ export function parseArgs<T extends ArgsDefinition>(
  */
 function isFlagSchema(schema: z.ZodType): boolean {
   if (schema instanceof z.ZodDefault) {
-    const inner = schema._def.innerType
+    const inner = schema.removeDefault()
     return inner instanceof z.ZodBoolean
   }
   return false

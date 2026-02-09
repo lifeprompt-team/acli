@@ -102,7 +102,32 @@ export type CommandRegistry = Record<string, CommandDefinition<any>>
 export function defineCommand<TArgs extends ArgsDefinition>(
   command: CommandDefinition<TArgs>,
 ): CommandDefinition<TArgs> {
+  if (command.args) {
+    validateShortAliases(command.args)
+  }
   return command
+}
+
+/**
+ * Validate that no duplicate short aliases exist in args definition
+ * @throws Error if duplicate short aliases are found
+ */
+function validateShortAliases(args: ArgsDefinition): void {
+  const seen = new Map<string, string>() // short → arg name
+  for (const [name, schema] of Object.entries(args)) {
+    const short = schema.meta.short
+    if (short === undefined) continue
+
+    if (short.length !== 1) {
+      throw new Error(`Invalid short alias '${short}' on arg '${name}': must be a single character`)
+    }
+
+    const existing = seen.get(short)
+    if (existing) {
+      throw new Error(`Duplicate short alias '-${short}' on args '${existing}' and '${name}'`)
+    }
+    seen.set(short, name)
+  }
 }
 
 /**
@@ -212,6 +237,9 @@ export function listCommands(
  *
  * This interface represents a typical MCP tool definition that can be
  * converted to ACLI commands using the `aclify` function.
+ *
+ * Note: Handler argument types are not strictly enforced to allow flexibility
+ * during migration. Use explicit type annotations in your handler if needed.
  */
 export interface McpToolLike {
   /** Tool name (becomes command name) */
@@ -221,7 +249,8 @@ export interface McpToolLike {
   /** Zod schema object for input validation */
   inputSchema: Record<string, ZodType>
   /** Handler function */
-  handler: (args: Record<string, unknown>) => Promise<unknown>
+  // biome-ignore lint/suspicious/noExplicitAny: Required for migration compatibility with various handler signatures
+  handler: (args: Record<string, any>) => Promise<unknown>
 }
 
 /**

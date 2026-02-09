@@ -4,9 +4,11 @@ import {
   aclify,
   arg,
   type CommandRegistry,
+  defineCommand,
   extractCommandPath,
   findCommand,
   listCommands,
+  type McpToolLike,
 } from '../router/registry'
 
 describe('command registry', () => {
@@ -121,18 +123,18 @@ describe('command registry', () => {
 
 describe('aclify', () => {
   it('converts MCP-style tools to CommandRegistry', () => {
-    const mcpTools = [
+    const mcpTools: McpToolLike[] = [
       {
         name: 'add',
         description: 'Add two numbers',
         inputSchema: { a: z.number(), b: z.number() },
-        handler: async ({ a, b }: { a: number; b: number }) => ({ result: a + b }),
+        handler: async ({ a, b }) => ({ result: a + b }),
       },
       {
         name: 'multiply',
         description: 'Multiply two numbers',
         inputSchema: { a: z.number(), b: z.number() },
-        handler: async ({ a, b }: { a: number; b: number }) => ({ result: a * b }),
+        handler: async ({ a, b }) => ({ result: a * b }),
       },
     ]
 
@@ -149,12 +151,12 @@ describe('aclify', () => {
   })
 
   it('handlers work correctly after conversion', async () => {
-    const mcpTools = [
+    const mcpTools: McpToolLike[] = [
       {
         name: 'greet',
         description: 'Greet someone',
         inputSchema: { name: z.string() },
-        handler: async ({ name }: { name: string }) => ({ message: `Hello, ${name}!` }),
+        handler: async ({ name }) => ({ message: `Hello, ${name}!` }),
       },
     ]
 
@@ -165,12 +167,12 @@ describe('aclify', () => {
   })
 
   it('preserves Zod schema validation', () => {
-    const mcpTools = [
+    const mcpTools: McpToolLike[] = [
       {
         name: 'test',
         description: 'Test command',
         inputSchema: { count: z.number().min(0).max(100) },
-        handler: async ({ count }: { count: number }) => ({ count }),
+        handler: async ({ count }) => ({ count }),
       },
     ]
 
@@ -200,5 +202,47 @@ describe('aclify', () => {
     const commands = aclify(mcpTools)
     expect(commands.ping).toBeDefined()
     expect(commands.ping.args).toEqual({})
+  })
+})
+
+describe('defineCommand', () => {
+  describe('short alias validation', () => {
+    it('allows valid short aliases', () => {
+      expect(() =>
+        defineCommand({
+          description: 'Test',
+          args: {
+            verbose: arg(z.boolean().default(false), { short: 'v' }),
+            output: arg(z.string(), { short: 'o' }),
+          },
+          handler: async () => ({}),
+        }),
+      ).not.toThrow()
+    })
+
+    it('throws on duplicate short aliases', () => {
+      expect(() =>
+        defineCommand({
+          description: 'Test',
+          args: {
+            verbose: arg(z.boolean().default(false), { short: 'v' }),
+            version: arg(z.boolean().default(false), { short: 'v' }),
+          },
+          handler: async () => ({}),
+        }),
+      ).toThrow("Duplicate short alias '-v' on args 'verbose' and 'version'")
+    })
+
+    it('throws on invalid short alias length', () => {
+      expect(() =>
+        defineCommand({
+          description: 'Test',
+          args: {
+            verbose: arg(z.boolean().default(false), { short: 'vb' }),
+          },
+          handler: async () => ({}),
+        }),
+      ).toThrow("Invalid short alias 'vb' on arg 'verbose': must be a single character")
+    })
   })
 })
