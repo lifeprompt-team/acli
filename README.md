@@ -151,6 +151,7 @@ arg(z.string().default("hello"))          // With default
 
 // Metadata
 arg(z.string(), { positional: 0 })        // Positional argument
+arg(z.string(), { short: 'n' })           // Short alias (-n)
 arg(z.string(), { description: "Name" })  // Help text
 arg(z.string(), { examples: ["foo"] })    // Example values
 ```
@@ -263,7 +264,21 @@ All syntaxes work:
 ```bash
 add 10 20          # Positional
 add --a 10 --b 20  # Named
-add -a 10 -b 20    # Short (first letter)
+```
+
+To use short options like `-a`, define them explicitly with the `short` metadata:
+
+```typescript
+const add = defineCommand({
+  description: "Add numbers",
+  args: {
+    a: arg(z.coerce.number(), { positional: 0, short: 'a' }),
+    b: arg(z.coerce.number(), { positional: 1, short: 'b' }),
+  },
+  handler: async ({ a, b }) => ({ result: a + b }),
+})
+
+// Now supports: add -a 10 -b 20
 ```
 
 ---
