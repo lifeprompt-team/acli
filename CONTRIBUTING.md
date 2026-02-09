@@ -108,7 +108,7 @@ git push && git push --tags
 
 ### ブランチ構成
 
-```
+```text
 main (安定版)
   └─ beta (次のリリース候補をまとめる)
        ├─ feature/aclify をマージ → 0.7.0-beta.0

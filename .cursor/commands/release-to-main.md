@@ -12,7 +12,7 @@ Create a PR to release the beta branch to main, and perform post-merge cleanup.
 
 ### PR title format
 
-```
+```text
 release: v<version>
 ```
 

@@ -335,7 +335,7 @@ describe('aclify integration', () => {
       name: 'greet',
       description: 'Greet someone',
       inputSchema: { name: z.string().default('World') },
-      handler: async ({ name = 'World' }) => ({
+      handler: async ({ name }) => ({
         message: `Hello, ${name}!`,
       }),
     },

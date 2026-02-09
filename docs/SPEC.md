@@ -557,7 +557,7 @@ End:     -- (all subsequent tokens treated as positional arguments)
 
 The `--` token signals the end of named options. All tokens after `--` are treated as positional arguments, even if they start with `-`.
 
-```
+```text
 Input:  "echo -- --not-a-flag"
 Result: echo handler receives "--not-a-flag" as positional argument
 ```
@@ -592,7 +592,7 @@ When a value-taking option appears in a combined sequence, it consumes the remai
 
 Boolean flags can be explicitly set to `false` using the `--no-` prefix:
 
-```
+```text
 --verbose       → verbose: true
 --no-verbose    → verbose: false
 --no-color      → color: false
@@ -602,7 +602,7 @@ Boolean flags can be explicitly set to `false` using the `--no-` prefix:
 The `--no-` prefix only works with boolean-typed arguments (`z.boolean()`, `z.boolean().default(...)`, `z.boolean().optional()`). Using it on non-boolean arguments produces a validation error.
 
 When both `--flag` and `--no-flag` are present, the last one wins:
-```
+```text
 --verbose --no-verbose   → verbose: false
 --no-verbose --verbose   → verbose: true
 ```
@@ -611,14 +611,14 @@ When both `--flag` and `--no-flag` are present, the last one wins:
 
 Arguments defined with an array schema (`z.array(...)`) accumulate values from repeated options:
 
-```
+```text
 --tag foo --tag bar        → tag: ["foo", "bar"]
 --tag=foo --tag=bar        → tag: ["foo", "bar"]
 -e FOO=1 -e BAR=2         → env: ["FOO=1", "BAR=2"]  (with short: 'e')
 ```
 
 Non-array arguments that are repeated use the last value (last-wins):
-```
+```text
 --name first --name second → name: "second"
 ```
 

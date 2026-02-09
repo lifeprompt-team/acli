@@ -47,16 +47,16 @@ const math = defineCommand({
     subtract: cmd({
       description: "Subtract two numbers",
       args: {
-        a: arg(z.coerce.number(), { positional: 0 }),
-        b: arg(z.coerce.number(), { positional: 1 }),
+        a: arg(z.coerce.number(), { positional: 0, description: "First number" }),
+        b: arg(z.coerce.number(), { positional: 1, description: "Second number" }),
       },
       handler: async ({ a, b }) => ({ result: a - b }),
     }),
     multiply: cmd({
       description: "Multiply two numbers",
       args: {
-        a: arg(z.coerce.number(), { positional: 0 }),
-        b: arg(z.coerce.number(), { positional: 1 }),
+        a: arg(z.coerce.number(), { positional: 0, description: "First number" }),
+        b: arg(z.coerce.number(), { positional: 1, description: "Second number" }),
       },
       handler: async ({ a, b }) => ({ result: a * b }),
     }),

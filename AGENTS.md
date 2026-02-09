@@ -353,12 +353,12 @@ ACLI requires `@modelcontextprotocol/sdk ^1.0.0` as an optional peer dependency.
 
 ### Agent SDKs
 
-As of February 2026, most Agent SDKs require Zod v3:
+As of February 2026, most Agent SDKs have migrated to Zod v4:
 
 | SDK | Zod requirement |
 |-----|----------------|
-| `@anthropic-ai/claude-agent-sdk` | `^3.24.1` |
-| `@openai/agents` | `^3.25.40` |
+| `@anthropic-ai/claude-agent-sdk` | `^4.0.0` |
+| `@openai/agents` | `^4` |
 | `ai` (Vercel AI SDK) | `^3.25.76 \|\| ^4.1.8` |
 
 ---
