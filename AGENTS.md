@@ -128,6 +128,22 @@ args: {
 }
 ```
 
+**Auto-coercion:** CLI arguments are always strings. The parser automatically converts string values to the expected type before Zod validation. `z.number()`, `z.date()`, `z.bigint()`, and their wrapped forms (`.optional()`, `.default()`, `.refine()`, `.transform()`) all work without needing `z.coerce.*`:
+```typescript
+arg(z.number())                     // ✅ "42" → 42
+arg(z.number().int().min(0))        // ✅ checks preserved
+arg(z.number().refine(n => n > 0))  // ✅ works through .refine()
+arg(z.array(z.number()))            // ✅ array elements converted too
+```
+
+**Combined short options:** Short boolean flags can be stacked, and a value-taking option can appear at the end:
+```
+command -abc           # -a -b -c (all boolean flags)
+command -vH value      # -v (flag) + -H value
+command -vHvalue       # same as above (attached value)
+command -H=value       # equals-separated value
+```
+
 **Note:** Use `--` to pass values that start with dashes as positional arguments:
 ```
 echo -- --not-a-flag   # "--not-a-flag" is treated as a positional value
@@ -322,8 +338,34 @@ When building ACLI tools:
 
 ---
 
+## Compatibility
+
+### Zod
+
+ACLI supports **Zod v3 (^3.23.0)** and is designed to be forward-compatible with **Zod v4**.
+
+- The parser uses only `instanceof` checks and public API methods (`.unwrap()`, `.removeDefault()`, `.element`, `.innerType()`) — no internal `_def` access.
+- Both `z.number()` and `z.coerce.number()` work. The parser handles string-to-type conversion automatically.
+
+### MCP SDK
+
+ACLI requires `@modelcontextprotocol/sdk ^1.0.0` as an optional peer dependency. When used with MCP SDK v1.25+, Zod `^3.25` is required by the SDK.
+
+### Agent SDKs
+
+As of February 2026, most Agent SDKs require Zod v3:
+
+| SDK | Zod requirement |
+|-----|----------------|
+| `@anthropic-ai/claude-agent-sdk` | `^3.24.1` |
+| `@openai/agents` | `^3.25.40` |
+| `ai` (Vercel AI SDK) | `^3.25.76 \|\| ^4.1.8` |
+
+---
+
 ## Resources
 
-- [Examples](./examples/README.md) - Runnable examples
-- [Architecture](./docs/ARCHITECTURE.md) - Internal design
-- [Specification](./docs/SPEC.md) - Protocol specification
+- [Examples](https://github.com/lifeprompt-team/acli/tree/main/examples) - Runnable examples
+- [Architecture](https://github.com/lifeprompt-team/acli/blob/main/docs/ARCHITECTURE.md) - Internal design
+- [Specification](https://github.com/lifeprompt-team/acli/blob/main/docs/SPEC.md) - Protocol specification
+- [Changelog](https://github.com/lifeprompt-team/acli/blob/main/CHANGELOG.md) - Version history

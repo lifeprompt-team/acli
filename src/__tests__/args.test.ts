@@ -876,17 +876,23 @@ describe('argument parser', () => {
       }
     })
 
-    it('provides coerce hint when ensureCoerce cannot reach inner schema (e.g. ZodEffects)', () => {
-      // Simulate a case where ensureCoerce cannot auto-fix:
-      // z.number().refine() wraps in ZodEffects, which ensureCoerce does not traverse
+    it('z.number().refine() works via parser-level coercion through ZodEffects', () => {
       const argDefs = {
         count: arg(z.number().refine((n) => n > 0)),
       }
       const result = parseArgs(['--count', '42'], argDefs)
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
-        expect(result.error.error.hint).toContain('z.coerce.number()')
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.count).toBe(42)
       }
+    })
+
+    it('z.number().refine() rejects invalid values after coercion', () => {
+      const argDefs = {
+        count: arg(z.number().refine((n) => n > 0)),
+      }
+      const result = parseArgs(['--count', '-5'], argDefs)
+      expect(result.ok).toBe(false)
     })
   })
 })
