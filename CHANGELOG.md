@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.7.0-beta.3] - 2026-02-09
+
+### Changed
+
+- **Zod v4 forward-compatible:** Removed all `_def` internal API access. The parser now uses only `instanceof` checks and public API methods (`.unwrap()`, `.removeDefault()`, `.element`, `.innerType()`, `.parse()`). This makes ACLI compatible with both Zod v3 and the upcoming Zod v4.
+- **Auto-coercion moved to parser level:** Instead of rewriting Zod schemas internally (`ensureCoerce`), the parser now converts string values to the expected types before Zod validation. This approach is cleaner, works through `.refine()` and `.transform()`, and has no Zod internal API dependency.
+- **AGENTS.md included in npm package:** The LLM development guide is now distributed with the package, available at `node_modules/@lifeprompt/acli/AGENTS.md`.
+- **CHANGELOG.md included in npm package.**
+- **AGENTS.md updated:** Added Compatibility section (Zod, MCP SDK, Agent SDKs), updated auto-coercion docs, fixed broken relative links to use GitHub URLs.
+
+---
+
 ## [0.7.0-beta.2] - 2026-02-09
 
 ### Added

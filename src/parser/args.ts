@@ -151,6 +151,9 @@ export function parseArgs<T extends ArgsDefinition>(
     }
   }
 
+  // Pre-convert string values to expected types (CLI args are always strings)
+  coerceRawValues(rawValues, argDefs)
+
   // Build Zod object schema and validate
   const schemaShape: Record<string, z.ZodType> = {}
   for (const [name, argSchema] of Object.entries(argDefs)) {
@@ -210,12 +213,19 @@ function setArgValue(
   }
 }
 
+// Safely access ZodEffects which may not exist in Zod v4
+// (In v4, refinements are internal checks, not a wrapper class)
+const ZodEffectsClass = typeof z.ZodEffects === 'function' ? z.ZodEffects : null
+
 /**
- * Unwrap ZodOptional / ZodDefault wrappers to get the inner schema type
+ * Unwrap ZodOptional / ZodDefault / ZodEffects wrappers to get the inner schema type
  */
 function unwrapSchema(schema: z.ZodType): z.ZodType {
   if (schema instanceof z.ZodOptional) return unwrapSchema(schema.unwrap())
   if (schema instanceof z.ZodDefault) return unwrapSchema(schema.removeDefault())
+  if (ZodEffectsClass && schema instanceof ZodEffectsClass) {
+    return unwrapSchema((schema as { innerType(): z.ZodType }).innerType())
+  }
   return schema
 }
 
@@ -247,6 +257,60 @@ function isFlagSchema(schema: z.ZodType): boolean {
  */
 function isArraySchema(schema: z.ZodType): boolean {
   return unwrapSchema(schema) instanceof z.ZodArray
+}
+
+/**
+ * Pre-convert string values to match expected schema types.
+ * CLI arguments are always strings, so we convert before Zod validation.
+ * Uses only instanceof checks (no _def access) for Zod v3/v4 compatibility.
+ */
+function coerceRawValues(rawValues: Record<string, unknown>, argDefs: ArgsDefinition): void {
+  for (const [name, argSchema] of Object.entries(argDefs)) {
+    const value = rawValues[name]
+    if (value === undefined) continue
+
+    const inner = unwrapSchema(argSchema.schema)
+
+    if (typeof value === 'string') {
+      if (inner instanceof z.ZodNumber) {
+        rawValues[name] = Number(value)
+      } else if (inner instanceof z.ZodBigInt) {
+        try {
+          rawValues[name] = BigInt(value)
+        } catch {
+          // Let Zod handle the validation error
+        }
+      } else if (inner instanceof z.ZodDate) {
+        rawValues[name] = new Date(value)
+      }
+    } else if (Array.isArray(value)) {
+      const elementSchema = getArrayElementSchema(inner)
+      if (elementSchema instanceof z.ZodNumber) {
+        rawValues[name] = value.map((v) => (typeof v === 'string' ? Number(v) : v))
+      } else if (elementSchema instanceof z.ZodBigInt) {
+        rawValues[name] = value.map((v) => {
+          if (typeof v !== 'string') return v
+          try {
+            return BigInt(v)
+          } catch {
+            return v
+          }
+        })
+      } else if (elementSchema instanceof z.ZodDate) {
+        rawValues[name] = value.map((v) => (typeof v === 'string' ? new Date(v) : v))
+      }
+    }
+  }
+}
+
+/**
+ * Get the element schema of a ZodArray (using public .element getter)
+ */
+function getArrayElementSchema(schema: z.ZodType): z.ZodType | null {
+  if (schema instanceof z.ZodArray) {
+    return unwrapSchema(schema.element)
+  }
+  return null
 }
 
 /**

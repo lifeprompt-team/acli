@@ -147,16 +147,17 @@ function getSchemaInfo(argSchema: ArgSchema): {
     }
     if (schema instanceof z.ZodDefault) {
       isRequired = false
-      // Zod v3 has no public API to read default values; _def.defaultValue() is the only way
-      defaultValue = schema._def.defaultValue()
+      // Use .parse(undefined) to extract default value (public API, works in Zod v3 and v4)
+      defaultValue = argSchema.schema.parse(undefined)
       schema = schema.removeDefault()
       changed = true
     }
   }
 
-  // Unwrap ZodEffects (preprocess, transform, refine)
-  while (schema instanceof z.ZodEffects) {
-    schema = schema.innerType()
+  // Unwrap ZodEffects (preprocess, transform, refine) — Zod v3 only, removed in v4
+  const ZodEffectsClass = typeof z.ZodEffects === 'function' ? z.ZodEffects : null
+  while (ZodEffectsClass && schema instanceof ZodEffectsClass) {
+    schema = (schema as { innerType(): z.ZodType }).innerType()
   }
 
   // Get type name
