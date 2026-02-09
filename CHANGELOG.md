@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.7.1] - 2026-02-09
+
+### Fixed
+
+- **`zod` moved from `dependencies` to `peerDependencies`:** Previously, declaring `zod` as a direct dependency with `"^3.23.0 || ^4.0.0"` caused package managers (especially pnpm) to resolve a separate zod instance for ACLI, potentially a different major version than the host project. This resulted in TypeScript type mismatches when passing Zod schemas (e.g., `z.string()`) to `arg()`. Now zod is a peer dependency, ensuring the host project's single zod instance is used throughout.
+
+---
+
 ## [0.7.0] - 2026-02-09
 
 ### Breaking Changes

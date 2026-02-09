@@ -1,6 +1,6 @@
 {
   "name": "@lifeprompt/acli",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "type": "module",
   "description": "acli - Agent CLI protocol for AI agents on MCP",
   "main": "dist/index.cjs",
@@ -62,10 +62,8 @@
   "publishConfig": {
     "access": "public"
   },
-  "dependencies": {
-    "zod": "^3.23.0 || ^4.0.0"
-  },
   "peerDependencies": {
+    "zod": "^3.23.0 || ^4.0.0",
     "@modelcontextprotocol/sdk": "^1.0.0"
   },
   "peerDependenciesMeta": {

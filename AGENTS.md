@@ -342,7 +342,7 @@ When building ACLI tools:
 
 ### Zod
 
-ACLI supports **Zod v3 (^3.23.0)** and is designed to be forward-compatible with **Zod v4**.
+ACLI supports **Zod v3 (^3.23.0)** and is designed to be forward-compatible with **Zod v4**. Zod is declared as a **peer dependency** (`"^3.23.0 || ^4.0.0"`), so the host project's zod instance is always used — no version duplication.
 
 - The parser uses only `instanceof` checks and public API methods (`.unwrap()`, `.removeDefault()`, `.element`, `.innerType()`) — no internal `_def` access.
 - Both `z.number()` and `z.coerce.number()` work. The parser handles string-to-type conversion automatically.
