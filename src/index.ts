@@ -31,4 +31,4 @@ export type {
   InferArgs,
   McpToolLike,
 } from './router/registry'
-export { aclify, arg, cmd, csvArg, defineCommand } from './router/registry'
+export { aclify, arg, cmd, defineCommand } from './router/registry'

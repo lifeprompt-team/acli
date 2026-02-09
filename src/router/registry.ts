@@ -14,6 +14,8 @@ import { type ZodType, z } from 'zod'
 export interface ArgMeta {
   /** Position index for positional arguments (0-based). Allows `add 10 20` instead of `add --a 10 --b 20` */
   positional?: number
+  /** Single-character short option alias (e.g., 'v' for -v). Only works when explicitly set. */
+  short?: string
   /** Example values for help text */
   examples?: string[]
   /** Description for help text */
@@ -39,48 +41,47 @@ export interface ArgSchema<T = unknown> {
  * }
  */
 export function arg<T>(schema: ZodType<T>, meta: ArgMeta = {}): ArgSchema<T> {
-  return { schema, meta }
+  return { schema: ensureCoerce(schema) as ZodType<T>, meta }
 }
 
 /**
- * Create a comma-separated array argument
+ * Ensure numeric, date, and bigint schemas use coercion for CLI string input.
  *
- * Accepts a comma-separated string and splits it into an array.
- * Optionally applies a Zod schema to validate/transform each element.
- *
- * @example
- * ```typescript
- * const args = {
- *   // String array: --tags "a,b,c" → ["a", "b", "c"]
- *   tags: csvArg(),
- *
- *   // Number array: --ids "1,2,3" → [1, 2, 3]
- *   ids: csvArg({ item: z.coerce.number() }),
- *
- *   // With metadata
- *   emails: csvArg({ item: z.string().email(), meta: { description: "Email list" } }),
- * }
- * ```
+ * CLI arguments are always strings, so `z.number()` would fail with
+ * "Expected number, received string". This function automatically converts
+ * `z.number()` → `z.coerce.number()` (and similarly for date/bigint),
+ * preserving all checks (.int(), .min(), .max(), etc.) and wrappers (.optional(), .default()).
  */
-export function csvArg<T = string>(
-  options: {
-    /** Zod schema for each element (default: z.string()) */
-    item?: ZodType<T>
-    /** Argument metadata (positional, description, examples) */
-    meta?: ArgMeta
-    /** Separator (default: ",") */
-    separator?: string
-  } = {},
-): ArgSchema<T[]> {
-  const { item, meta = {}, separator = ',' } = options
-  const itemSchema = item ?? (z.string() as unknown as ZodType<T>)
+function ensureCoerce(schema: z.ZodType): z.ZodType {
+  // Unwrap wrapper types recursively
+  if (schema instanceof z.ZodOptional) {
+    const inner = ensureCoerce(schema._def.innerType)
+    if (inner === schema._def.innerType) return schema
+    return new z.ZodOptional({ ...schema._def, innerType: inner }) as z.ZodType
+  }
+  if (schema instanceof z.ZodDefault) {
+    const inner = ensureCoerce(schema._def.innerType)
+    if (inner === schema._def.innerType) return schema
+    return new z.ZodDefault({ ...schema._def, innerType: inner }) as z.ZodType
+  }
+  if (schema instanceof z.ZodArray) {
+    const inner = ensureCoerce(schema._def.type)
+    if (inner === schema._def.type) return schema
+    return new z.ZodArray({ ...schema._def, type: inner }) as z.ZodType
+  }
 
-  const schema = z
-    .string()
-    .transform((s) => s.split(separator).map((v) => v.trim()))
-    .pipe(z.array(itemSchema))
+  // Leaf types that need coercion from string input
+  if (schema instanceof z.ZodNumber && !schema._def.coerce) {
+    return new z.ZodNumber({ ...schema._def, coerce: true })
+  }
+  if (schema instanceof z.ZodDate && !schema._def.coerce) {
+    return new z.ZodDate({ ...schema._def, coerce: true })
+  }
+  if (schema instanceof z.ZodBigInt && !schema._def.coerce) {
+    return new z.ZodBigInt({ ...schema._def, coerce: true })
+  }
 
-  return { schema: schema as unknown as ZodType<T[]>, meta }
+  return schema
 }
 
 /**
@@ -136,12 +137,39 @@ export type CommandRegistry = Record<string, CommandDefinition<any>>
  * const multiply = defineCommand({ ... })
  *
  * // Pass commands directly to registerAcli
- * registerAcli(server, { add, multiply }, { name: "math" })
+ * registerAcli(server, "math", { add, multiply })
  */
 export function defineCommand<TArgs extends ArgsDefinition>(
   command: CommandDefinition<TArgs>,
 ): CommandDefinition<TArgs> {
+  if (command.args) {
+    validateShortAliases(command.args)
+  }
   return command
+}
+
+/**
+ * Validate that no duplicate short aliases exist in args definition
+ * @throws Error if duplicate short aliases are found
+ */
+function validateShortAliases(args: ArgsDefinition): void {
+  const seen = new Map<string, string>() // short → arg name
+  for (const [name, schema] of Object.entries(args)) {
+    const short = schema.meta.short
+    if (short === undefined) continue
+
+    if (short.length !== 1 || !/^[a-zA-Z]$/.test(short)) {
+      throw new Error(
+        `Invalid short alias '${short}' on arg '${name}': must be a single ASCII letter (a-z, A-Z)`,
+      )
+    }
+
+    const existing = seen.get(short)
+    if (existing) {
+      throw new Error(`Duplicate short alias '-${short}' on args '${existing}' and '${name}'`)
+    }
+    seen.set(short, name)
+  }
 }
 
 /**
@@ -251,6 +279,9 @@ export function listCommands(
  *
  * This interface represents a typical MCP tool definition that can be
  * converted to ACLI commands using the `aclify` function.
+ *
+ * Note: Handler argument types are not strictly enforced to allow flexibility
+ * during migration. Use explicit type annotations in your handler if needed.
  */
 export interface McpToolLike {
   /** Tool name (becomes command name) */
@@ -260,7 +291,8 @@ export interface McpToolLike {
   /** Zod schema object for input validation */
   inputSchema: Record<string, ZodType>
   /** Handler function */
-  handler: (args: Record<string, unknown>) => Promise<unknown>
+  // biome-ignore lint/suspicious/noExplicitAny: Required for migration compatibility with various handler signatures
+  handler: (args: Record<string, any>) => Promise<unknown>
 }
 
 /**
@@ -294,7 +326,7 @@ export interface McpToolLike {
  * const commands = aclify(mcpTools);
  *
  * // Register with MCP server
- * registerAcli(server, commands, { name: "math" });
+ * registerAcli(server, "math", commands);
  * ```
  *
  * @param tools - Array of MCP-style tool definitions

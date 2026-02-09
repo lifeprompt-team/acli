@@ -25,6 +25,8 @@ export interface HelpResponse {
     description?: string
     positional?: number
     examples?: string[]
+    short?: string
+    negatable?: boolean
   }>
 }
 
@@ -134,22 +136,27 @@ function getSchemaInfo(argSchema: ArgSchema): {
   let isRequired = true
   let defaultValue: unknown
 
-  // Unwrap ZodOptional
-  if (schema instanceof z.ZodOptional) {
-    isRequired = false
-    schema = schema._def.innerType
-  }
-
-  // Unwrap ZodDefault
-  if (schema instanceof z.ZodDefault) {
-    isRequired = false
-    defaultValue = schema._def.defaultValue()
-    schema = schema._def.innerType
+  // Unwrap ZodOptional / ZodDefault in any order (handles nesting like Optional<Default<T>> or Default<Optional<T>>)
+  let changed = true
+  while (changed) {
+    changed = false
+    if (schema instanceof z.ZodOptional) {
+      isRequired = false
+      schema = schema.unwrap()
+      changed = true
+    }
+    if (schema instanceof z.ZodDefault) {
+      isRequired = false
+      // Zod v3 has no public API to read default values; _def.defaultValue() is the only way
+      defaultValue = schema._def.defaultValue()
+      schema = schema.removeDefault()
+      changed = true
+    }
   }
 
   // Unwrap ZodEffects (preprocess, transform, refine)
   while (schema instanceof z.ZodEffects) {
-    schema = schema._def.schema
+    schema = schema.innerType()
   }
 
   // Get type name
@@ -166,11 +173,28 @@ function getZodTypeName(schema: z.ZodType): string {
   if (schema instanceof z.ZodNumber) return 'number'
   if (schema instanceof z.ZodBoolean) return 'boolean'
   if (schema instanceof z.ZodDate) return 'datetime'
-  if (schema instanceof z.ZodArray) return 'array'
+  if (schema instanceof z.ZodArray) {
+    const elementType = getZodTypeName(schema.element)
+    return `${elementType}[]`
+  }
   if (schema instanceof z.ZodEnum) return 'enum'
   if (schema instanceof z.ZodLiteral) return 'literal'
   if (schema instanceof z.ZodUnion) return 'union'
   return 'unknown'
+}
+
+/**
+ * Precomputed argument info for help output (avoids redundant getSchemaInfo calls)
+ */
+interface ArgHelpInfo {
+  argName: string
+  meta: ArgSchema['meta']
+  type: string
+  required: boolean
+  default?: unknown
+  isPositional: boolean
+  isBoolean: boolean
+  isArray: boolean
 }
 
 function formatCommandHelp(name: string, def: CommandDefinition): HelpResponse {
@@ -186,22 +210,72 @@ function formatCommandHelp(name: string, def: CommandDefinition): HelpResponse {
     }))
   }
 
-  if (def.args) {
-    result.arguments = Object.entries(def.args).map(([k, v]) => {
+  if (def.args && Object.keys(def.args).length > 0) {
+    // Precompute schema info once per arg
+    const argInfos: ArgHelpInfo[] = Object.entries(def.args).map(([k, v]) => {
       const info = getSchemaInfo(v)
       return {
-        name: `--${k}`,
+        argName: k,
+        meta: v.meta,
         type: info.type,
         required: info.required,
-        ...(info.default !== undefined && { default: info.default }),
-        ...(v.meta.description && { description: v.meta.description }),
-        ...(v.meta.positional !== undefined && { positional: v.meta.positional }),
-        ...(v.meta.examples && { examples: v.meta.examples }),
+        default: info.default,
+        isPositional: v.meta.positional !== undefined,
+        isBoolean: info.type === 'boolean',
+        isArray: info.type.endsWith('[]'),
       }
     })
+
+    result.arguments = argInfos.map((a) => ({
+      name: a.isPositional ? `<${a.argName}>` : `--${a.argName}`,
+      type: a.type,
+      required: a.required,
+      ...(a.default !== undefined && { default: a.default }),
+      ...(a.meta.description && { description: a.meta.description }),
+      ...(a.isPositional && { positional: a.meta.positional }),
+      ...(a.meta.short && { short: a.meta.short }),
+      ...(a.isBoolean && { negatable: true }),
+      ...(a.meta.examples && { examples: a.meta.examples }),
+    }))
+
+    result.usage = buildUsageLine(name, argInfos)
   }
 
   return result
+}
+
+/**
+ * Build a usage line from command name and precomputed arg info
+ */
+function buildUsageLine(commandName: string, argInfos: ArgHelpInfo[]): string {
+  const parts: string[] = [commandName]
+
+  // Positionals first, sorted by position index
+  const positionals = argInfos
+    .filter((a) => a.isPositional)
+    .sort((a, b) => (a.meta.positional ?? 0) - (b.meta.positional ?? 0))
+
+  for (const p of positionals) {
+    parts.push(p.required ? `<${p.argName}>` : `[<${p.argName}>]`)
+  }
+
+  // Named args
+  const named = argInfos.filter((a) => !a.isPositional)
+  for (const n of named) {
+    const displayType = n.isArray ? n.type.slice(0, -2) : n.type
+
+    if (n.isBoolean) {
+      parts.push(`[--${n.argName}]`)
+    } else if (n.required) {
+      parts.push(n.isArray ? `--${n.argName} <${displayType}>...` : `--${n.argName} <${n.type}>`)
+    } else {
+      parts.push(
+        n.isArray ? `[--${n.argName} <${displayType}>...]` : `[--${n.argName} <${n.type}>]`,
+      )
+    }
+  }
+
+  return parts.join(' ')
 }
 
 function buildInputSchema(def: CommandDefinition): Record<string, unknown> {
@@ -246,6 +320,7 @@ function buildSchemaTree(registry: CommandRegistry): Record<string, unknown> {
 }
 
 function mapTypeToJsonSchema(type: string): string {
+  if (type.endsWith('[]')) return 'array'
   switch (type) {
     case 'number':
       return 'number'
@@ -253,8 +328,6 @@ function mapTypeToJsonSchema(type: string): string {
       return 'boolean'
     case 'datetime':
       return 'string' // with format: date-time
-    case 'array':
-      return 'array'
     default:
       return 'string'
   }

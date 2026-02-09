@@ -61,10 +61,7 @@ const commands = { add, multiply }
 const server = new McpServer({ name: "my-server", version: "1.0.0" })
 
 // Register as "math" tool
-registerAcli(server, commands, {
-  name: "math",
-  description: "Mathematical operations.",
-})
+registerAcli(server, "math", commands, "Mathematical operations.")
 // → Tool description: "Mathematical operations. Commands: add, multiply. Run 'help' for details."
 ```
 
@@ -136,6 +133,7 @@ arg(z.string())                           // Required string
 arg(z.coerce.number())                    // Number (coerced from string)
 arg(z.coerce.number().int())              // Integer
 arg(z.boolean().default(false))           // Flag (presence = true)
+arg(z.array(z.string()))                  // Array (--tag a --tag b → ["a", "b"])
 arg(z.coerce.date())                      // Date (ISO8601 string → Date)
 
 // Validation
@@ -151,6 +149,7 @@ arg(z.string().default("hello"))          // With default
 
 // Metadata
 arg(z.string(), { positional: 0 })        // Positional argument
+arg(z.string(), { short: 'n' })           // Short alias (-n)
 arg(z.string(), { description: "Name" })  // Help text
 arg(z.string(), { examples: ["foo"] })    // Example values
 ```
@@ -229,7 +228,7 @@ const calendar = defineCommand({
   },
 })
 
-// Use directly: registerAcli(server, { calendar }, { name: "cli" })
+// Use directly: registerAcli(server, "cli", { calendar })
 ```
 
 > **Note**: Without `cmd()`, inline subcommand handlers receive `unknown` types due to TypeScript's type inference limitations. Always wrap subcommands with `cmd()` for full type safety.
@@ -256,14 +255,54 @@ const add = defineCommand({
   handler: async ({ a, b }) => ({ result: a + b }),
 })
 
-// Use: registerAcli(server, { add }, { name: "math" })
+// Use: registerAcli(server, "math", { add })
 ```
 
 All syntaxes work:
 ```bash
 add 10 20          # Positional
 add --a 10 --b 20  # Named
-add -a 10 -b 20    # Short (first letter)
+```
+
+To use short options like `-a`, define them explicitly with the `short` metadata:
+
+```typescript
+const add = defineCommand({
+  description: "Add numbers",
+  args: {
+    a: arg(z.coerce.number(), { positional: 0, short: 'a' }),
+    b: arg(z.coerce.number(), { positional: 1, short: 'b' }),
+  },
+  handler: async ({ a, b }) => ({ result: a + b }),
+})
+
+// Now supports: add -a 10 -b 20
+```
+
+### Flag Negation (`--no-` prefix)
+
+Boolean flags can be explicitly set to `false` using the `--no-` prefix:
+
+```bash
+command --no-verbose    # verbose = false
+command --no-color      # color = false
+```
+
+### Repeated Options (Arrays)
+
+Arguments defined with `z.array(...)` accumulate values from repeated options:
+
+```typescript
+const search = defineCommand({
+  description: "Search files",
+  args: {
+    ext: arg(z.array(z.string()), { short: 'e', description: "File extensions" }),
+  },
+  handler: async ({ ext }) => ({ extensions: ext }),
+})
+
+// search --ext .ts --ext .tsx  → ext: [".ts", ".tsx"]
+// search -e .ts -e .tsx        → ext: [".ts", ".tsx"]
 ```
 
 ---
@@ -330,18 +369,16 @@ ACLI is designed with security in mind:
 
 ## API Reference
 
-### `registerAcli(server, commands, options)`
+### `registerAcli(server, name, commands, description?)`
 
 Register commands as an MCP tool.
 
 ```typescript
-registerAcli(server, commands, {
-  name: "tool_name",           // MCP tool name
-  description: "Base desc.",   // Optional, auto-generates command list
-})
+registerAcli(server, "tool_name", commands)
 
-// Or with just name
-registerAcli(server, commands, "tool_name")
+// With description
+registerAcli(server, "tool_name", commands, "Base description.")
+// → "Base description. Commands: cmd1, cmd2. Run 'help' for details."
 ```
 
 ### `runCli({ commands, args? })`
@@ -378,6 +415,8 @@ import type {
   // Command types
   CommandDefinition,
   CommandRegistry,
+  // MCP migration types
+  McpToolLike,
   // MCP response types
   CallToolResult,
   TextContent,
@@ -391,8 +430,9 @@ import type {
 } from "@lifeprompt/acli"
 
 // Helper functions
-import { arg, defineCommand, cmd } from "@lifeprompt/acli"
+import { arg, defineCommand, cmd, aclify } from "@lifeprompt/acli"
 // cmd is an alias for defineCommand - use inside subcommands for type inference
+// aclify converts MCP-style tool definitions to ACLI CommandRegistry
 ```
 
 ---

@@ -399,32 +399,40 @@ Output:
   "data": {
     "command": "calendar events",
     "description": "List calendar events with optional filters",
+    "usage": "events [--today] [--from <from>] [--to <to>] [--max <max>] [--calendar <calendar>]",
     "arguments": [
       {
         "name": "--today",
-        "type": "flag",
-        "description": "Show today's events only"
+        "type": "boolean",
+        "required": false,
+        "default": false,
+        "description": "Show today's events only",
+        "negatable": true
       },
       {
         "name": "--from",
-        "type": "datetime",
+        "type": "date",
+        "required": false,
         "description": "Start date/time (ISO8601 format)",
         "examples": ["2026-02-02", "2026-02-02T10:00:00Z"]
       },
       {
         "name": "--to",
-        "type": "datetime",
+        "type": "date",
+        "required": false,
         "description": "End date/time (ISO8601 format)"
       },
       {
         "name": "--max",
-        "type": "integer",
+        "type": "number",
+        "required": false,
         "default": 10,
         "description": "Maximum number of events to return"
       },
       {
         "name": "--calendar",
         "type": "string",
+        "required": false,
         "default": "primary",
         "description": "Calendar ID or 'primary'"
       }
@@ -529,10 +537,9 @@ Examples:
 | `string` | Any string | `"hello world"`, `file.txt` |
 | `integer` | Integer | `10`, `-5`, `0` |
 | `number` | Number (including decimals) | `3.14`, `-0.5` |
-| `boolean` | `true` / `false` | `true`, `false` |
-| `flag` | Presence means true | `--today` (no value) |
+| `boolean` | `true` / `false`, or flag (presence = true) | `--today`, `--verbose true` |
 | `datetime` | ISO8601 | `2026-02-02`, `2026-02-02T10:00:00Z` |
-| `array` | Comma-separated | `a,b,c` → `["a", "b", "c"]` |
+| `array` | Repeated options | `--tag a --tag b` → `["a", "b"]` |
 
 ### 7.3 Option Syntax
 
@@ -541,6 +548,8 @@ Short:   -n 10
 Long:    --max 10
 Inline:  --max=10
 Flag:    --today (no value)
+Negate:  --no-color (boolean flag → false)
+Repeat:  --tag a --tag b (array accumulation)
 End:     -- (all subsequent tokens treated as positional arguments)
 ```
 
@@ -555,59 +564,96 @@ Result: echo handler receives "--not-a-flag" as positional argument
 
 This follows the POSIX convention and is useful when argument values start with dashes.
 
-#### 7.3.2 Array Arguments
+#### 7.3.2 Short Options
 
-Array arguments use comma-separated values:
-
-```
-Input:  "cmd --tags a,b,c"
-Result: tags = ["a", "b", "c"]
-
-Input:  "cmd --ids 1,2,3"
-Result: ids = [1, 2, 3]
-```
-
-Use the `csvArg()` helper in the implementation:
+Short options require an explicit `short` alias in the argument definition:
 
 ```typescript
-import { csvArg } from "@lifeprompt/acli"
-
-const args = {
-  tags: csvArg(),                              // string[]
-  ids: csvArg({ item: z.coerce.number() }),    // number[]
+args: {
+  verbose: arg(z.boolean().default(false), { short: 'v' }),  // -v works
+  header: arg(z.string(), { short: 'H' }),                   // -H works
+  name: arg(z.string()),                                     // no short alias
 }
+```
+
+Without `short`, only the long option (`--name`) is available.
+
+**Combined short options** are supported:
+
+- `-abc` → `-a -b -c` (combines boolean flags)
+- `-vH value` → `-v -H value` (combines boolean flag with value-taking option)
+- `-Hvalue` → `-H value` (attached value without space)
+- `-H=value` → `-H value` (equals-separated attached value)
+- `-vHvalue` → `-v -H value` (combined flags + attached value)
+
+When a value-taking option appears in a combined sequence, it consumes the remaining characters as its value. If no characters remain, the next token is used.
+
+#### 7.3.3 Flag Negation (`--no-` prefix)
+
+Boolean flags can be explicitly set to `false` using the `--no-` prefix:
+
+```
+--verbose       → verbose: true
+--no-verbose    → verbose: false
+--no-color      → color: false
+--no-dry-run    → dry_run: false
+```
+
+The `--no-` prefix only works with boolean-typed arguments (`z.boolean()`, `z.boolean().default(...)`, `z.boolean().optional()`). Using it on non-boolean arguments produces a validation error.
+
+When both `--flag` and `--no-flag` are present, the last one wins:
+```
+--verbose --no-verbose   → verbose: false
+--no-verbose --verbose   → verbose: true
+```
+
+#### 7.3.4 Repeated Options (Array Accumulation)
+
+Arguments defined with an array schema (`z.array(...)`) accumulate values from repeated options:
+
+```
+--tag foo --tag bar        → tag: ["foo", "bar"]
+--tag=foo --tag=bar        → tag: ["foo", "bar"]
+-e FOO=1 -e BAR=2         → env: ["FOO=1", "BAR=2"]  (with short: 'e')
+```
+
+Non-array arguments that are repeated use the last value (last-wins):
+```
+--name first --name second → name: "second"
 ```
 
 ### 7.4 Command Registration (Implementation)
 
+ACLI uses Zod schemas for type-safe argument definitions:
+
 ```typescript
-interface CommandDefinition {
-  name: string
-  description: string
-  subcommands?: CommandDefinition[]
-  arguments?: ArgumentDefinition[]
-  handler?: (args: ParsedArgs) => Promise<unknown>
-}
+import { z } from "zod"
+import { arg, defineCommand } from "@lifeprompt/acli"
 
-interface ArgumentDefinition {
-  name: string                    // "--from" or "fileId"
-  type: ArgumentType
-  required?: boolean
-  default?: unknown
-  description: string
-  examples?: string[]
-  validate?: (value: unknown) => boolean
-}
-
-type ArgumentType =
-  | "string"
-  | "integer"
-  | "number"
-  | "boolean"
-  | "flag"
-  | "datetime"
-  | "array"
+const events = defineCommand({
+  description: "List calendar events",
+  args: {
+    today: arg(z.boolean().default(false), { description: "Today's events" }),
+    from: arg(z.coerce.date().optional(), { description: "Start date (ISO8601)" }),
+    to: arg(z.coerce.date().optional(), { description: "End date (ISO8601)" }),
+    max: arg(z.coerce.number().default(10), { description: "Maximum results" }),
+    calendar: arg(z.string().default("primary"), { description: "Calendar ID" }),
+  },
+  handler: async ({ today, from, to, max = 10, calendar = "primary" }) => {
+    // ...
+    return { events: [] }
+  },
+})
 ```
+
+**`arg()` Metadata Options:**
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `positional` | `number` | Position index (0-based) for positional arguments |
+| `description` | `string` | Human-readable description |
+| `short` | `string` | Single-character alias (e.g., `'v'` for `-v`) |
+| `examples` | `string[]` | Example values for help output |
 
 ---
 
@@ -706,20 +752,15 @@ Elements required for a minimal ACLI implementation:
 ├── src/
 │   ├── parser/
 │   │   ├── tokenizer.ts      # POSIX-like tokenization
-│   │   ├── validator.ts      # Security validation
+│   │   ├── args.ts           # Argument parsing (options, flags, arrays)
 │   │   └── index.ts
 │   ├── router/
-│   │   ├── registry.ts       # Command registry
-│   │   ├── matcher.ts        # Command matching
+│   │   ├── registry.ts       # Command registry & routing
 │   │   └── index.ts
 │   ├── response/
-│   │   ├── types.ts          # AcliResponse types
-│   │   ├── errors.ts         # Standard error codes
-│   │   └── formatter.ts      # Response formatting
+│   │   └── types.ts          # AcliResponse types & error codes
 │   ├── discovery/
-│   │   ├── help.ts           # help command
-│   │   ├── schema.ts         # schema command
-│   │   └── version.ts        # version command
+│   │   └── index.ts          # help, schema, version commands
 │   ├── mcp/
 │   │   └── tool.ts           # MCP tool integration
 │   └── index.ts              # Public API
@@ -730,43 +771,43 @@ Elements required for a minimal ACLI implementation:
 ### 10.3 Usage Example
 
 ```typescript
-import { createAcli, defineCommand, arg } from '@lifeprompt/acli'
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
+import { z } from "zod"
+import { arg, cmd, defineCommand, registerAcli } from "@lifeprompt/acli"
 
-// Define commands
+// Define commands with subcommands
 const calendar = defineCommand({
   description: "Calendar commands",
   subcommands: {
-    events: {
+    events: cmd({
       description: "List calendar events",
-      arguments: [
-        { name: "--today", type: "flag", description: "Today's events" },
-        { name: "--max", type: "integer", default: 10 }
-      ],
-      handler: async (args) => {
-        const events = await googleCalendar.listEvents(args)
+      args: {
+        today: arg(z.boolean().default(false), { description: "Today's events" }),
+        max: arg(z.coerce.number().default(10), { description: "Maximum results" }),
+      },
+      handler: async ({ today, max = 10 }) => {
+        const events = await googleCalendar.listEvents({ today, max })
         return { events }
-      }
-    },
-    create: {
+      },
+    }),
+    create: cmd({
       description: "Create a calendar event",
-      arguments: [
-        { name: "--summary", type: "string", required: true },
-        { name: "--from", type: "datetime", required: true },
-        { name: "--to", type: "datetime", required: true }
-      ],
-      handler: async (args) => {
-        const event = await googleCalendar.createEvent(args)
+      args: {
+        summary: arg(z.string(), { positional: 0, description: "Event summary" }),
+        from: arg(z.coerce.date(), { description: "Start date/time (ISO8601)" }),
+        to: arg(z.coerce.date(), { description: "End date/time (ISO8601)" }),
+      },
+      handler: async ({ summary, from, to }) => {
+        const event = await googleCalendar.createEvent({ summary, from, to })
         return { event }
-      }
-    }
-  }
+      },
+    }),
+  },
 })
 
-// Create MCP tool
-const cliTool = createAcli(commands)
-
 // Register with MCP server
-mcpServer.registerTool(cliTool)
+const server = new McpServer({ name: "my-server", version: "1.0.0" })
+registerAcli(server, "workspace", { calendar }, "Google Workspace operations.")
 ```
 
 ---
@@ -801,7 +842,7 @@ subcommand      = 1*( ALPHA / "-" / "_" )
 argument        = positional / option
 positional      = value
 option          = short-opt / long-opt
-short-opt       = "-" ALPHA [ value ]
+short-opt       = "-" ALPHA [ SP value ] ; value-attached form (-n10) is NOT supported
 long-opt        = "--" 1*( ALPHA / "-" ) [ "=" value / SP value ]
 value           = quoted-string / unquoted-string
 quoted-string   = DQUOTE *( escaped-char / safe-char ) DQUOTE

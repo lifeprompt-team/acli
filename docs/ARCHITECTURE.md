@@ -117,10 +117,13 @@ Defines command structure and routing.
 ```typescript
 interface CommandDefinition {
   description: string
-  args?: Record<string, ArgumentDefinition>
+  args?: Record<string, ArgSchema>  // Zod-based argument schemas
   handler?: (args: ParsedArgs) => Promise<unknown>
   subcommands?: Record<string, CommandDefinition>
 }
+
+// ArgSchema is created via arg():
+// arg(z.string(), { positional: 0, description: "Name", short: 'n' })
 ```
 
 **Key functions:**
@@ -135,21 +138,19 @@ Parses tokens into typed arguments.
 
 **Supported patterns:**
 - Long options: `--name value`, `--name=value`
-- Short options: `-n value`
+- Short options: `-n value` (requires `{ short: 'n' }` in arg definition)
 - Positional: `value1 value2` (when `positional` is defined)
-- Flags: `--verbose` (no value)
+- Flags: `--verbose` (boolean with default, no value needed)
+- Flag negation: `--no-verbose` (sets boolean flag to `false`)
+- Repeated options: `--tag a --tag b` (accumulates into array for `z.array()` args)
 - End of options: `--` (all subsequent tokens become positional)
-- CSV arrays: `--tags "a,b,c"` → `["a", "b", "c"]` (via `csvArg()` helper)
 
 ### MCP Integration (`src/mcp/tool.ts`)
 
 Registers ACLI as an MCP tool.
 
 ```typescript
-registerAcli(server, commands, {
-  name: "math",
-  description: "Mathematical operations.",
-})
+registerAcli(server, "math", commands, "Mathematical operations.")
 ```
 
 **Auto-generated description:**
@@ -172,8 +173,10 @@ runCli({ commands })
 
 ### Adding a New Argument Type
 
-1. Add type to `ArgumentType` in `registry.ts`
-2. Add parsing logic to `parseValue()` in `args.ts`
+Argument types are defined using Zod schemas. To support a new type:
+
+1. Define a Zod schema (e.g., `z.coerce.bigint()`)
+2. Use it in `arg()` — no framework changes needed as Zod handles parsing
 
 ### Adding a New Built-in Command
 
@@ -186,7 +189,7 @@ See `examples/math-cli.mjs` for a complete example.
 
 1. Import `defineCommand`, `arg`, and `runCli` (or `registerAcli`)
 2. Define commands with `defineCommand()` and handlers
-3. Call `runCli({ commands: { cmd1, cmd2 } })` or `registerAcli(server, { cmd1, cmd2 }, options)`
+3. Call `runCli({ commands: { cmd1, cmd2 } })` or `registerAcli(server, "name", { cmd1, cmd2 })`
 
 ---
 
