@@ -314,6 +314,37 @@ server.registerTool("legacy-tool", { ... }, async () => { ... });
 registerAcli(server, "new", { command1, command2 });
 ```
 
+### Migrating from `csvArg` to `z.array()`
+
+If you previously used `csvArg()` for comma-separated array arguments, switch to `z.array()` with repeated options:
+
+**Before:**
+```typescript
+import { csvArg } from "@lifeprompt/acli";
+
+args: {
+  tags: csvArg(),                              // --tags "a,b,c" → ["a", "b", "c"]
+  ids: csvArg({ item: z.coerce.number() }),    // --ids "1,2,3" → [1, 2, 3]
+}
+```
+
+**After:**
+```typescript
+import { arg } from "@lifeprompt/acli";
+
+args: {
+  tag: arg(z.array(z.string())),               // --tag a --tag b → ["a", "b"]
+  id: arg(z.array(z.coerce.number())),         // --id 1 --id 2 → [1, 2]
+}
+```
+
+Key differences:
+- Values are passed via **repeated options** instead of comma-separated strings
+- Use singular naming (`tag` instead of `tags`) since each option adds one value
+- `csvArg` is removed from the public API — use `arg(z.array(...))` directly
+- Optional arrays: `arg(z.array(z.string()).optional())`
+- Arrays with defaults: `arg(z.array(z.string()).default(['.ts']))`
+
 ## FAQ
 
 ### Q: Do I need to change my MCP client?

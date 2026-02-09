@@ -147,6 +147,7 @@ function getSchemaInfo(argSchema: ArgSchema): {
     }
     if (schema instanceof z.ZodDefault) {
       isRequired = false
+      // Zod v3 has no public API to read default values; _def.defaultValue() is the only way
       defaultValue = schema._def.defaultValue()
       schema = schema.removeDefault()
       changed = true

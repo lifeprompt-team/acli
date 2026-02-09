@@ -118,8 +118,10 @@ function validateShortAliases(args: ArgsDefinition): void {
     const short = schema.meta.short
     if (short === undefined) continue
 
-    if (short.length !== 1) {
-      throw new Error(`Invalid short alias '${short}' on arg '${name}': must be a single character`)
+    if (short.length !== 1 || !/^[a-zA-Z]$/.test(short)) {
+      throw new Error(
+        `Invalid short alias '${short}' on arg '${name}': must be a single ASCII letter (a-z, A-Z)`,
+      )
     }
 
     const existing = seen.get(short)

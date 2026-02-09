@@ -834,7 +834,7 @@ subcommand      = 1*( ALPHA / "-" / "_" )
 argument        = positional / option
 positional      = value
 option          = short-opt / long-opt
-short-opt       = "-" ALPHA SP value    ; value-attached form (-n10) is NOT supported
+short-opt       = "-" ALPHA [ SP value ] ; value-attached form (-n10) is NOT supported
 long-opt        = "--" 1*( ALPHA / "-" ) [ "=" value / SP value ]
 value           = quoted-string / unquoted-string
 quoted-string   = DQUOTE *( escaped-char / safe-char ) DQUOTE

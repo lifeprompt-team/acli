@@ -29,6 +29,17 @@ describe('argument parser', () => {
       }
     })
 
+    it('preserves equals signs in inline values', () => {
+      const argDefs = {
+        query: arg(z.string()),
+      }
+      const result = parseArgs(['--query=SELECT * WHERE a=1 AND b=2'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.query).toBe('SELECT * WHERE a=1 AND b=2')
+      }
+    })
+
     it('parses flags (boolean with default)', () => {
       const argDefs = {
         verbose: arg(z.boolean().default(false)),

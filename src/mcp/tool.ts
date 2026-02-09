@@ -113,13 +113,12 @@ export function registerAcli(
   commands: CommandRegistry,
   description?: string,
 ): void {
-  const toolName = name
-  const toolDescription = generateDescription(commands, description)
+  const desc = generateDescription(commands, description)
 
   mcp.registerTool(
-    toolName,
+    name,
     {
-      description: toolDescription,
+      description: desc,
       inputSchema: {
         command: z
           .string()

@@ -42,7 +42,9 @@ export function parseArgs<T extends ArgsDefinition>(
 
     if (token.startsWith('--')) {
       // Long option
-      const [key, inlineValue] = token.slice(2).split('=')
+      const eqIdx = token.indexOf('=', 2)
+      const key = eqIdx === -1 ? token.slice(2) : token.slice(2, eqIdx)
+      const inlineValue = eqIdx === -1 ? undefined : token.slice(eqIdx + 1)
       const argName = key.replace(/-/g, '_')
       const argSchema = argDefs[argName]
 

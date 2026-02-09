@@ -242,7 +242,7 @@ describe('defineCommand', () => {
           },
           handler: async () => ({}),
         }),
-      ).toThrow("Invalid short alias 'vb' on arg 'verbose': must be a single character")
+      ).toThrow("Invalid short alias 'vb' on arg 'verbose': must be a single ASCII letter (a-z, A-Z)")
     })
   })
 })
