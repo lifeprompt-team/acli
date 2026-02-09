@@ -156,14 +156,14 @@ function isFlagSchema(schema: z.ZodType): boolean {
 }
 
 /**
- * Find argument by short key (first letter of name)
+ * Find argument by explicit short alias defined in meta.short
  */
 function findArgByShortKey(
   defs: ArgsDefinition,
   shortKey: string,
 ): { name: string; schema: ArgSchema } | undefined {
   for (const [name, schema] of Object.entries(defs)) {
-    if (name[0] === shortKey) {
+    if (schema.meta.short === shortKey) {
       return { name, schema }
     }
   }

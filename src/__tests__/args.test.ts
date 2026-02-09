@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { parseArgs } from '../parser/args'
-import { arg, csvArg } from '../router/registry'
+import { arg } from '../router/registry'
 
 describe('argument parser', () => {
   describe('basic parsing', () => {
@@ -42,16 +42,27 @@ describe('argument parser', () => {
       }
     })
 
-    it('parses short options', () => {
+    it('parses short options with explicit short alias', () => {
       const argDefs = {
-        verbose: arg(z.boolean().default(false)),
-        name: arg(z.string()),
+        verbose: arg(z.boolean().default(false), { short: 'v' }),
+        name: arg(z.string(), { short: 'n' }),
       }
       const result = parseArgs(['-v', '-n', 'test'], argDefs)
       expect(result.ok).toBe(true)
       if (result.ok) {
         expect(result.value.verbose).toBe(true)
         expect(result.value.name).toBe('test')
+      }
+    })
+
+    it('rejects short option without explicit short alias', () => {
+      const argDefs = {
+        verbose: arg(z.boolean().default(false)),
+      }
+      const result = parseArgs(['-v'], argDefs)
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.error.error.code).toBe('VALIDATION_ERROR')
       }
     })
   })
@@ -325,81 +336,6 @@ describe('argument parser', () => {
       if (result.ok) {
         expect(result.value.name).toBeUndefined()
       }
-    })
-  })
-
-  describe('csv array arguments', () => {
-    it('parses comma-separated string array', () => {
-      const argDefs = {
-        tags: csvArg(),
-      }
-      const result = parseArgs(['--tags', 'a,b,c'], argDefs)
-      expect(result.ok).toBe(true)
-      if (result.ok) {
-        expect(result.value.tags).toEqual(['a', 'b', 'c'])
-      }
-    })
-
-    it('trims whitespace around elements', () => {
-      const argDefs = {
-        tags: csvArg(),
-      }
-      const result = parseArgs(['--tags', 'a , b , c'], argDefs)
-      expect(result.ok).toBe(true)
-      if (result.ok) {
-        expect(result.value.tags).toEqual(['a', 'b', 'c'])
-      }
-    })
-
-    it('parses comma-separated number array', () => {
-      const argDefs = {
-        ids: csvArg({ item: z.coerce.number() }),
-      }
-      const result = parseArgs(['--ids', '1,2,3'], argDefs)
-      expect(result.ok).toBe(true)
-      if (result.ok) {
-        expect(result.value.ids).toEqual([1, 2, 3])
-      }
-    })
-
-    it('validates each element with item schema', () => {
-      const argDefs = {
-        emails: csvArg({ item: z.string().email() }),
-      }
-      const result = parseArgs(['--emails', 'a@b.com,invalid'], argDefs)
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
-        expect(result.error.error.code).toBe('VALIDATION_ERROR')
-      }
-    })
-
-    it('handles single element', () => {
-      const argDefs = {
-        tags: csvArg(),
-      }
-      const result = parseArgs(['--tags', 'single'], argDefs)
-      expect(result.ok).toBe(true)
-      if (result.ok) {
-        expect(result.value.tags).toEqual(['single'])
-      }
-    })
-
-    it('supports custom separator', () => {
-      const argDefs = {
-        items: csvArg({ separator: '|' }),
-      }
-      const result = parseArgs(['--items', 'a|b|c'], argDefs)
-      expect(result.ok).toBe(true)
-      if (result.ok) {
-        expect(result.value.items).toEqual(['a', 'b', 'c'])
-      }
-    })
-
-    it('supports metadata', () => {
-      const argDefs = {
-        tags: csvArg({ meta: { description: 'Comma-separated tags' } }),
-      }
-      expect(argDefs.tags.meta.description).toBe('Comma-separated tags')
     })
   })
 

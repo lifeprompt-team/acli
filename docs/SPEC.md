@@ -555,28 +555,19 @@ Result: echo handler receives "--not-a-flag" as positional argument
 
 This follows the POSIX convention and is useful when argument values start with dashes.
 
-#### 7.3.2 Array Arguments
+#### 7.3.2 Short Options
 
-Array arguments use comma-separated values:
-
-```
-Input:  "cmd --tags a,b,c"
-Result: tags = ["a", "b", "c"]
-
-Input:  "cmd --ids 1,2,3"
-Result: ids = [1, 2, 3]
-```
-
-Use the `csvArg()` helper in the implementation:
+Short options require an explicit `short` alias in the argument definition:
 
 ```typescript
-import { csvArg } from "@lifeprompt/acli"
-
-const args = {
-  tags: csvArg(),                              // string[]
-  ids: csvArg({ item: z.coerce.number() }),    // number[]
+args: {
+  verbose: arg(z.boolean().default(false), { short: 'v' }),  // -v works
+  header: arg(z.string(), { short: 'H' }),                   // -H works
+  name: arg(z.string()),                                     // no short alias
 }
 ```
+
+Without `short`, only the long option (`--name`) is available.
 
 ### 7.4 Command Registration (Implementation)
 

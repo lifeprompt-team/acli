@@ -126,13 +126,11 @@ args: {
   // Date (ISO8601 string → Date)
   date: arg(z.coerce.date()),
 
-  // CSV array (comma-separated → string[])
-  tags: csvArg(),
-  // Usage: --tags "a,b,c" → ["a", "b", "c"]
+  // Short alias (-v for --verbose)
+  verbose: arg(z.boolean().default(false), { short: 'v' }),
 
-  // CSV array with typed items (comma-separated → number[])
-  ids: csvArg({ item: z.coerce.number() }),
-  // Usage: --ids "1,2,3" → [1, 2, 3]
+  // Short alias with value (-H "Bearer token")
+  header: arg(z.string(), { short: 'H' }),
 }
 ```
 

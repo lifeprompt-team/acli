@@ -139,7 +139,7 @@ Parses tokens into typed arguments.
 - Positional: `value1 value2` (when `positional` is defined)
 - Flags: `--verbose` (no value)
 - End of options: `--` (all subsequent tokens become positional)
-- CSV arrays: `--tags "a,b,c"` → `["a", "b", "c"]` (via `csvArg()` helper)
+- Explicit short aliases: `-v` (requires `{ short: 'v' }` in arg definition)
 
 ### MCP Integration (`src/mcp/tool.ts`)
 
