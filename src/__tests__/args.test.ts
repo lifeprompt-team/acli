@@ -339,6 +339,186 @@ describe('argument parser', () => {
     })
   })
 
+  describe('--no- prefix (flag negation)', () => {
+    it('negates a boolean flag with default', () => {
+      const argDefs = {
+        color: arg(z.boolean().default(true)),
+      }
+      const result = parseArgs(['--no-color'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.color).toBe(false)
+      }
+    })
+
+    it('negates a boolean flag with default false', () => {
+      const argDefs = {
+        verbose: arg(z.boolean().default(false)),
+      }
+      const result = parseArgs(['--no-verbose'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.verbose).toBe(false)
+      }
+    })
+
+    it('negates an optional boolean', () => {
+      const argDefs = {
+        cache: arg(z.boolean().optional()),
+      }
+      const result = parseArgs(['--no-cache'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.cache).toBe(false)
+      }
+    })
+
+    it('rejects --no- on non-boolean argument', () => {
+      const argDefs = {
+        name: arg(z.string()),
+      }
+      const result = parseArgs(['--no-name'], argDefs)
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.error.error.message).toContain('can only be used with boolean flags')
+      }
+    })
+
+    it('rejects --no- for unknown argument', () => {
+      const argDefs = {
+        verbose: arg(z.boolean().default(false)),
+      }
+      const result = parseArgs(['--no-unknown'], argDefs)
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.error.error.code).toBe('VALIDATION_ERROR')
+      }
+    })
+
+    it('--no- overrides previous --flag', () => {
+      const argDefs = {
+        verbose: arg(z.boolean().default(false)),
+      }
+      const result = parseArgs(['--verbose', '--no-verbose'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.verbose).toBe(false)
+      }
+    })
+
+    it('--flag overrides previous --no-flag', () => {
+      const argDefs = {
+        verbose: arg(z.boolean().default(false)),
+      }
+      const result = parseArgs(['--no-verbose', '--verbose'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.verbose).toBe(true)
+      }
+    })
+
+    it('handles hyphenated flag names with --no-', () => {
+      const argDefs = {
+        dry_run: arg(z.boolean().default(false)),
+      }
+      const result = parseArgs(['--no-dry-run'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.dry_run).toBe(false)
+      }
+    })
+  })
+
+  describe('repeated options (array accumulation)', () => {
+    it('accumulates repeated options into array', () => {
+      const argDefs = {
+        tag: arg(z.array(z.string())),
+      }
+      const result = parseArgs(['--tag', 'foo', '--tag', 'bar'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.tag).toEqual(['foo', 'bar'])
+      }
+    })
+
+    it('handles single value for array option', () => {
+      const argDefs = {
+        tag: arg(z.array(z.string())),
+      }
+      const result = parseArgs(['--tag', 'foo'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.tag).toEqual(['foo'])
+      }
+    })
+
+    it('handles optional array with repeated values', () => {
+      const argDefs = {
+        include: arg(z.array(z.string()).optional()),
+      }
+      const result = parseArgs(['--include', 'a', '--include', 'b', '--include', 'c'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.include).toEqual(['a', 'b', 'c'])
+      }
+    })
+
+    it('handles array with default', () => {
+      const argDefs = {
+        ext: arg(z.array(z.string()).default(['.ts'])),
+      }
+      const result = parseArgs(['--ext', '.js', '--ext', '.tsx'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.ext).toEqual(['.js', '.tsx'])
+      }
+    })
+
+    it('uses default when no values provided for array', () => {
+      const argDefs = {
+        ext: arg(z.array(z.string()).default(['.ts'])),
+      }
+      const result = parseArgs([], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.ext).toEqual(['.ts'])
+      }
+    })
+
+    it('accumulates via short option', () => {
+      const argDefs = {
+        env: arg(z.array(z.string()), { short: 'e' }),
+      }
+      const result = parseArgs(['-e', 'FOO=1', '-e', 'BAR=2'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.env).toEqual(['FOO=1', 'BAR=2'])
+      }
+    })
+
+    it('accumulates via inline value syntax', () => {
+      const argDefs = {
+        tag: arg(z.array(z.string())),
+      }
+      const result = parseArgs(['--tag=foo', '--tag=bar'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.tag).toEqual(['foo', 'bar'])
+      }
+    })
+
+    it('non-array repeated option uses last value', () => {
+      const argDefs = {
+        name: arg(z.string()),
+      }
+      const result = parseArgs(['--name', 'first', '--name', 'second'], argDefs)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value.name).toBe('second')
+      }
+    })
+  })
+
   describe('empty args', () => {
     it('handles empty args definition', () => {
       const result = parseArgs([], {})

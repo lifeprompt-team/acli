@@ -40,7 +40,30 @@ export function parseArgs<T extends ArgsDefinition>(
       break
     }
 
-    if (token.startsWith('--')) {
+    if (token.startsWith('--no-') && token.length > 5) {
+      // --no- prefix: negate a boolean flag
+      const key = token.slice(5)
+      const argName = key.replace(/-/g, '_')
+      const argSchema = argDefs[argName]
+
+      if (!argSchema) {
+        return {
+          ok: false,
+          error: error('VALIDATION_ERROR', `Unknown option: ${token}`, {
+            hint: 'Check available options with help command',
+          }),
+        }
+      }
+
+      if (!isBooleanSchema(argSchema.schema)) {
+        return {
+          ok: false,
+          error: error('VALIDATION_ERROR', `Option --no-${key} can only be used with boolean flags`),
+        }
+      }
+
+      rawValues[argName] = false
+    } else if (token.startsWith('--')) {
       // Long option
       const [key, inlineValue] = token.slice(2).split('=')
       const argName = key.replace(/-/g, '_')
@@ -61,7 +84,7 @@ export function parseArgs<T extends ArgsDefinition>(
       if (isFlag) {
         rawValues[argName] = true
       } else if (inlineValue !== undefined) {
-        rawValues[argName] = inlineValue
+        setArgValue(rawValues, argName, inlineValue, argSchema.schema)
       } else {
         // Next token is the value
         i++
@@ -71,7 +94,7 @@ export function parseArgs<T extends ArgsDefinition>(
             error: error('VALIDATION_ERROR', `Option --${key} requires a value`),
           }
         }
-        rawValues[argName] = tokens[i]
+        setArgValue(rawValues, argName, tokens[i], argSchema.schema)
       }
     } else if (token.startsWith('-') && token.length === 2) {
       // Short option
@@ -97,7 +120,7 @@ export function parseArgs<T extends ArgsDefinition>(
             error: error('VALIDATION_ERROR', `Option -${shortKey} requires a value`),
           }
         }
-        rawValues[found.name] = tokens[i]
+        setArgValue(rawValues, found.name, tokens[i], found.schema.schema)
       }
     } else {
       // Positional argument - collect for later processing
@@ -145,12 +168,61 @@ export function parseArgs<T extends ArgsDefinition>(
 }
 
 /**
+ * Set an argument value, accumulating into an array if the schema is an array type
+ */
+function setArgValue(
+  rawValues: Record<string, unknown>,
+  name: string,
+  value: string,
+  schema: z.ZodType,
+): void {
+  if (isArraySchema(schema)) {
+    const existing = rawValues[name]
+    if (Array.isArray(existing)) {
+      existing.push(value)
+    } else {
+      rawValues[name] = [value]
+    }
+  } else {
+    rawValues[name] = value
+  }
+}
+
+/**
  * Check if a Zod schema represents a flag (boolean with default)
  */
 function isFlagSchema(schema: z.ZodType): boolean {
   if (schema instanceof z.ZodDefault) {
     const inner = schema.removeDefault()
     return inner instanceof z.ZodBoolean
+  }
+  return false
+}
+
+/**
+ * Check if a Zod schema represents an array type (supports ZodArray, ZodDefault<ZodArray>, ZodOptional<ZodArray>)
+ */
+function isArraySchema(schema: z.ZodType): boolean {
+  if (schema instanceof z.ZodArray) return true
+  if (schema instanceof z.ZodDefault) {
+    return schema.removeDefault() instanceof z.ZodArray
+  }
+  if (schema instanceof z.ZodOptional) {
+    return schema.unwrap() instanceof z.ZodArray
+  }
+  return false
+}
+
+/**
+ * Check if a Zod schema represents a boolean type (supports ZodBoolean, ZodDefault<ZodBoolean>, ZodOptional<ZodBoolean>)
+ */
+function isBooleanSchema(schema: z.ZodType): boolean {
+  if (schema instanceof z.ZodBoolean) return true
+  if (schema instanceof z.ZodDefault) {
+    return schema.removeDefault() instanceof z.ZodBoolean
+  }
+  if (schema instanceof z.ZodOptional) {
+    return schema.unwrap() instanceof z.ZodBoolean
   }
   return false
 }

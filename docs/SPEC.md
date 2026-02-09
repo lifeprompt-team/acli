@@ -541,6 +541,8 @@ Short:   -n 10
 Long:    --max 10
 Inline:  --max=10
 Flag:    --today (no value)
+Negate:  --no-color (boolean flag → false)
+Repeat:  --tag a --tag b (array accumulation)
 End:     -- (all subsequent tokens treated as positional arguments)
 ```
 
@@ -568,6 +570,40 @@ args: {
 ```
 
 Without `short`, only the long option (`--name`) is available.
+
+#### 7.3.3 Flag Negation (`--no-` prefix)
+
+Boolean flags can be explicitly set to `false` using the `--no-` prefix:
+
+```
+--verbose       → verbose: true
+--no-verbose    → verbose: false
+--no-color      → color: false
+--no-dry-run    → dry_run: false
+```
+
+The `--no-` prefix only works with boolean-typed arguments (`z.boolean()`, `z.boolean().default(...)`, `z.boolean().optional()`). Using it on non-boolean arguments produces a validation error.
+
+When both `--flag` and `--no-flag` are present, the last one wins:
+```
+--verbose --no-verbose   → verbose: false
+--no-verbose --verbose   → verbose: true
+```
+
+#### 7.3.4 Repeated Options (Array Accumulation)
+
+Arguments defined with an array schema (`z.array(...)`) accumulate values from repeated options:
+
+```
+--tag foo --tag bar        → tag: ["foo", "bar"]
+--tag=foo --tag=bar        → tag: ["foo", "bar"]
+-e FOO=1 -e BAR=2         → env: ["FOO=1", "BAR=2"]  (with short: 'e')
+```
+
+Non-array arguments that are repeated use the last value (last-wins):
+```
+--name first --name second → name: "second"
+```
 
 ### 7.4 Command Registration (Implementation)
 

@@ -131,12 +131,21 @@ args: {
 
   // Short alias with value (-H "Bearer token")
   header: arg(z.string(), { short: 'H' }),
+
+  // Array (repeated option: --tag a --tag b → ["a", "b"])
+  tag: arg(z.array(z.string())),
 }
 ```
 
 **Note:** Use `--` to pass values that start with dashes as positional arguments:
 ```
 echo -- --not-a-flag   # "--not-a-flag" is treated as a positional value
+```
+
+**Note:** Use `--no-` prefix to negate boolean flags:
+```
+command --no-verbose    # verbose = false
+command --no-color      # color = false
 ```
 
 ---

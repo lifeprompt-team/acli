@@ -136,6 +136,7 @@ arg(z.string())                           // Required string
 arg(z.coerce.number())                    // Number (coerced from string)
 arg(z.coerce.number().int())              // Integer
 arg(z.boolean().default(false))           // Flag (presence = true)
+arg(z.array(z.string()))                  // Array (--tag a --tag b → ["a", "b"])
 arg(z.coerce.date())                      // Date (ISO8601 string → Date)
 
 // Validation
@@ -279,6 +280,32 @@ const add = defineCommand({
 })
 
 // Now supports: add -a 10 -b 20
+```
+
+### Flag Negation (`--no-` prefix)
+
+Boolean flags can be explicitly set to `false` using the `--no-` prefix:
+
+```bash
+command --no-verbose    # verbose = false
+command --no-color      # color = false
+```
+
+### Repeated Options (Arrays)
+
+Arguments defined with `z.array(...)` accumulate values from repeated options:
+
+```typescript
+const search = defineCommand({
+  description: "Search files",
+  args: {
+    ext: arg(z.array(z.string()), { short: 'e', description: "File extensions" }),
+  },
+  handler: async ({ ext }) => ({ extensions: ext }),
+})
+
+// search --ext .ts --ext .tsx  → ext: [".ts", ".tsx"]
+// search -e .ts -e .tsx        → ext: [".ts", ".tsx"]
 ```
 
 ---
