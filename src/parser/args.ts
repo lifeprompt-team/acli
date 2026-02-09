@@ -172,7 +172,10 @@ export function parseArgs<T extends ArgsDefinition>(
       const { expected, received } = firstIssue as { expected?: string; received?: string }
       if (received === 'undefined') {
         hint = `Provide --${path} <value>`
-      } else if (received === 'string' && (expected === 'number' || expected === 'bigint' || expected === 'date')) {
+      } else if (
+        received === 'string' &&
+        (expected === 'number' || expected === 'bigint' || expected === 'date')
+      ) {
         hint = `Use z.coerce.${expected}() instead of z.${expected}() in the arg definition`
       }
     }

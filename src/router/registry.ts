@@ -2,7 +2,7 @@
  * Command registry and definition helpers
  */
 
-import { z, type ZodType } from 'zod'
+import { type ZodType, z } from 'zod'
 
 // ============================================================================
 // Zod-based Argument Schema
