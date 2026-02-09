@@ -1,6 +1,6 @@
 {
   "name": "@lifeprompt/acli",
-  "version": "0.6.10",
+  "version": "0.7.0",
   "type": "module",
   "description": "acli - Agent CLI protocol for AI agents on MCP",
   "main": "dist/index.cjs",
@@ -22,7 +22,9 @@
     "acli": "./dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "AGENTS.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "tsup",

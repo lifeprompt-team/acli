@@ -47,16 +47,16 @@ const math = defineCommand({
     subtract: cmd({
       description: "Subtract two numbers",
       args: {
-        a: arg(z.coerce.number(), { positional: 0 }),
-        b: arg(z.coerce.number(), { positional: 1 }),
+        a: arg(z.coerce.number(), { positional: 0, description: "First number" }),
+        b: arg(z.coerce.number(), { positional: 1, description: "Second number" }),
       },
       handler: async ({ a, b }) => ({ result: a - b }),
     }),
     multiply: cmd({
       description: "Multiply two numbers",
       args: {
-        a: arg(z.coerce.number(), { positional: 0 }),
-        b: arg(z.coerce.number(), { positional: 1 }),
+        a: arg(z.coerce.number(), { positional: 0, description: "First number" }),
+        b: arg(z.coerce.number(), { positional: 1, description: "Second number" }),
       },
       handler: async ({ a, b }) => ({ result: a * b }),
     }),
@@ -134,11 +134,9 @@ async function main() {
   // Claude will call: { "name": "acli", "arguments": { "command": "math add 10 20" } }
   registerAcli(
     server,
+    "acli",
     { math, time, echo },
-    {
-      name: "acli",
-      description: "Agent CLI with multiple namespaces (math, time, echo).",
-    }
+    "Agent CLI with multiple namespaces (math, time, echo).",
   );
 
   const transport = new StdioServerTransport();

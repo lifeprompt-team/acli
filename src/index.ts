@@ -29,5 +29,6 @@ export type {
   CommandDefinition,
   CommandRegistry,
   InferArgs,
+  McpToolLike,
 } from './router/registry'
-export { arg, cmd, defineCommand } from './router/registry'
+export { aclify, arg, cmd, defineCommand } from './router/registry'

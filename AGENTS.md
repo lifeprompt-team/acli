@@ -85,17 +85,11 @@ import { registerAcli } from "@lifeprompt/acli";
 const server = new McpServer({ name: "my-server", version: "1.0.0" });
 
 // Single pattern: One domain = One tool
-registerAcli(server, { add, subtract, multiply }, {
-  name: "math",
-  description: "Mathematical operations.",
-});
+registerAcli(server, "math", { add, subtract, multiply });
 // AI calls: { "name": "math", "arguments": { "command": "add 10 20" } }
 
 // Composite pattern: Multiple domains in one tool
-registerAcli(server, { math, time, echo }, {
-  name: "acli",
-  description: "Agent CLI with multiple namespaces.",
-});
+registerAcli(server, "acli", { math, time, echo }, "Agent CLI with multiple namespaces.");
 // AI calls: { "name": "acli", "arguments": { "command": "math add 10 20" } }
 ```
 
@@ -117,15 +111,48 @@ args: {
   // Enum
   format: arg(z.enum(["json", "csv"]).default("json")),
 
-  // Boolean flag (--verbose)
-  verbose: arg(z.boolean().default(false)),
+  // Boolean flag (--verbose or -v)
+  verbose: arg(z.boolean().default(false), { short: 'v' }),
 
   // Optional
   filter: arg(z.string().optional()),
 
   // Date (ISO8601 string → Date)
   date: arg(z.coerce.date()),
+
+  // Short alias with value (-H "Bearer token")
+  header: arg(z.string(), { short: 'H' }),
+
+  // Array (repeated option: --tag a --tag b → ["a", "b"])
+  tag: arg(z.array(z.string())),
 }
+```
+
+**Auto-coercion:** CLI arguments are always strings. The parser automatically converts string values to the expected type before Zod validation. `z.number()`, `z.date()`, `z.bigint()`, and their wrapped forms (`.optional()`, `.default()`, `.refine()`, `.transform()`) all work without needing `z.coerce.*`:
+```typescript
+arg(z.number())                     // ✅ "42" → 42
+arg(z.number().int().min(0))        // ✅ checks preserved
+arg(z.number().refine(n => n > 0))  // ✅ works through .refine()
+arg(z.array(z.number()))            // ✅ array elements converted too
+```
+
+**Combined short options:** Short boolean flags can be stacked, and a value-taking option can appear at the end:
+```
+command -abc           # -a -b -c (all boolean flags)
+command -vH value      # -v (flag) + -H value
+command -vHvalue       # same as above (attached value)
+command -H=value       # equals-separated value
+```
+
+**Note:** Use `--` to pass values that start with dashes as positional arguments:
+```
+echo -- --not-a-flag   # "--not-a-flag" is treated as a positional value
+```
+
+**Note:** Use `--no-` prefix to negate boolean flags:
+```
+command --no-verbose    # verbose = false
+command --no-color      # color = false
 ```
 
 ---
@@ -137,9 +164,7 @@ AI agents read descriptions to understand tools. Write them thoroughly.
 ### Tool-Level Description
 
 ```typescript
-registerAcli(server, commands, {
-  name: "bq",
-  description: `Google BigQuery operations.
+registerAcli(server, "bq", commands, `Google BigQuery operations.
 
 Commands: query, datasets, tables, schema
 
@@ -148,8 +173,7 @@ Quick Examples:
   tables my_dataset           # List tables
   query "SELECT * FROM t"     # Execute SQL
 
-Use 'help' for detailed command information.`,
-});
+Use 'help' for detailed command information.`);
 ```
 
 ### Command-Level Description
@@ -280,10 +304,7 @@ const create = defineCommand({
 // ============================================================
 
 export function registerMyTools(mcp: McpServer) {
-  registerAcli(mcp, { list, create }, {
-    name: "my-tool",
-    description: "...",
-  });
+  registerAcli(mcp, "my-tool", { list, create }, "...");
 }
 ```
 
@@ -317,8 +338,34 @@ When building ACLI tools:
 
 ---
 
+## Compatibility
+
+### Zod
+
+ACLI supports **Zod v3 (^3.23.0)** and is designed to be forward-compatible with **Zod v4**.
+
+- The parser uses only `instanceof` checks and public API methods (`.unwrap()`, `.removeDefault()`, `.element`, `.innerType()`) — no internal `_def` access.
+- Both `z.number()` and `z.coerce.number()` work. The parser handles string-to-type conversion automatically.
+
+### MCP SDK
+
+ACLI requires `@modelcontextprotocol/sdk ^1.0.0` as an optional peer dependency. When used with MCP SDK v1.25+, Zod `^3.25` is required by the SDK.
+
+### Agent SDKs
+
+As of February 2026, most Agent SDKs have migrated to Zod v4:
+
+| SDK | Zod requirement |
+|-----|----------------|
+| `@anthropic-ai/claude-agent-sdk` | `^4.0.0` |
+| `@openai/agents` | `^4` |
+| `ai` (Vercel AI SDK) | `^3.25.76 \|\| ^4.1.8` |
+
+---
+
 ## Resources
 
-- [Examples](./examples/README.md) - Runnable examples
-- [Architecture](./docs/ARCHITECTURE.md) - Internal design
-- [Specification](./docs/SPEC.md) - Protocol specification
+- [Examples](https://github.com/lifeprompt-team/acli/tree/main/examples) - Runnable examples
+- [Architecture](https://github.com/lifeprompt-team/acli/blob/main/docs/ARCHITECTURE.md) - Internal design
+- [Specification](https://github.com/lifeprompt-team/acli/blob/main/docs/SPEC.md) - Protocol specification
+- [Changelog](https://github.com/lifeprompt-team/acli/blob/main/CHANGELOG.md) - Version history

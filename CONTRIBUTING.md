@@ -102,6 +102,63 @@ git push && git push --tags
 
 ---
 
+## Beta Release Flow
+
+新機能を正式リリース前にテストしたい場合、`beta` ブランチ経由でbetaバージョンをnpmに公開できます。
+
+### ブランチ構成
+
+```text
+main (安定版)
+  └─ beta (次のリリース候補をまとめる)
+       ├─ feature/aclify をマージ → 0.7.0-beta.0
+       ├─ feature/xxx をマージ    → 0.7.0-beta.1
+       └─ テスト完了 → mainにマージ → 0.7.0 (正式版)
+```
+
+### 新機能をbetaに追加する
+
+```bash
+# 1. mainからfeatureブランチを作って開発
+git checkout -b feature/xxx main
+# ... 実装・テスト ...
+git commit -m "feat: add xxx"
+
+# 2. betaブランチにマージ
+git checkout beta
+git merge feature/xxx
+
+# 3. betaバージョンを上げてnpmに公開
+npm version 0.7.0-beta.N --no-git-tag-version  # Nをインクリメント
+pnpm build
+npm publish --tag beta
+
+# 4. コミット & push
+git add -A && git commit -m "0.7.0-beta.N"
+git push
+```
+
+### betaを試す（利用者側）
+
+```bash
+pnpm add @lifeprompt/acli@beta        # 最新のbeta
+pnpm add @lifeprompt/acli@0.7.0-beta.0  # 特定のbeta
+```
+
+通常の `pnpm add @lifeprompt/acli` は安定版のままなので、既存ユーザーに影響はありません。
+
+### betaを正式リリースする
+
+```bash
+# betaでのテストが完了したら
+git checkout main
+git merge beta
+npm version minor   # 0.7.0
+git push && git push --tags  # CI が自動で npm publish + GitHub Release
+```
+
+---
+
 ## CI/CD
 
 | Workflow | Trigger | Action |

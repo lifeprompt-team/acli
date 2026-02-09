@@ -84,11 +84,9 @@ async function main() {
   // Claude will call: { "name": "math", "arguments": { "command": "add 10 20" } }
   registerAcli(
     server,
+    "math",
     { add, subtract, multiply, divide },
-    {
-      name: "math",
-      description: "Mathematical operations.",
-    }
+    "Mathematical operations.",
   );
 
   // Connect via stdio (standard for MCP)
