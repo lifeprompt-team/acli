@@ -54,8 +54,7 @@ async function importModule(filePath: string): Promise<Record<string, unknown>> 
     // Fallback: try jiti for TypeScript files
     try {
       const jitiMod = await import('jiti')
-      const createJiti =
-        jitiMod.createJiti || jitiMod.default?.createJiti || jitiMod.default
+      const createJiti = jitiMod.createJiti || jitiMod.default?.createJiti || jitiMod.default
       if (typeof createJiti === 'function') {
         const jiti = createJiti(import.meta.url, { interopDefault: true })
         return (await jiti.import(absolutePath)) as Record<string, unknown>
@@ -103,10 +102,7 @@ function isCommandRegistry(obj: Record<string, unknown>): obj is CommandRegistry
  *   2. `export const commands = { cmd1, cmd2 }`
  *   3. `export const cmd1 = defineCommand({...})` (individual named exports)
  */
-function extractRegistry(
-  mod: Record<string, unknown>,
-  filePath: string,
-): CommandRegistry {
+function extractRegistry(mod: Record<string, unknown>, filePath: string): CommandRegistry {
   // Pattern 1: default export
   if (mod.default && typeof mod.default === 'object') {
     if (isCommandRegistry(mod.default as Record<string, unknown>)) {
