@@ -53,6 +53,7 @@ async function importModule(filePath: string): Promise<Record<string, unknown>> 
 
     // Fallback: try jiti for TypeScript files
     try {
+      // @ts-expect-error -- jiti is an optional dependency, may not be installed
       const jitiMod = await import('jiti')
       const createJiti = jitiMod.createJiti || jitiMod.default?.createJiti || jitiMod.default
       if (typeof createJiti === 'function') {
