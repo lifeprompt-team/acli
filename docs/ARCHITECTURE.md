@@ -36,7 +36,9 @@ ACLI works both as:
 ```
 src/
 ├── index.ts           # Public API exports
-├── cli.ts             # CLI runner (standalone execution)
+├── cli.ts             # CLI runner (programmatic, runCli)
+├── bin.ts             # CLI entry point (npx @lifeprompt/acli)
+├── repl.ts            # Interactive REPL & module loader
 ├── mcp/
 │   └── tool.ts        # MCP integration (registerAcli)
 ├── parser/
@@ -160,12 +162,25 @@ registerAcli(server, "math", commands, "Mathematical operations.")
 
 ### CLI Runner (`src/cli.ts`)
 
-Standalone CLI execution.
+Programmatic CLI execution for embedding in scripts:
 
 ```typescript
 runCli({ commands })
 // Reads process.argv, executes, prints JSON, exits
 ```
+
+### CLI Entry Point (`src/bin.ts`)
+
+Standalone binary for `npx @lifeprompt/acli`. Routes to `repl` or `exec` subcommands.
+
+### REPL & Module Loader (`src/repl.ts`)
+
+Interactive command shell and dynamic module loader.
+
+- **Module loader**: Imports JS/TS files via native `import()`, with [jiti](https://github.com/unjs/jiti) fallback for TypeScript on older runtimes.
+- **Registry extraction**: Detects commands from default export, named `commands` export, or individual named exports.
+- **REPL**: `readline`-based interactive shell with tab completion, sequential command processing, and colored output.
+- **Exec**: Single command execution for scripting/CI.
 
 ---
 
@@ -244,5 +259,4 @@ pnpm test:run
 - **Streaming responses**: For long-running commands
 - **Authentication middleware**: Common auth patterns
 - **Command aliases**: Shorthand commands
-- **Tab completion**: Shell integration
 - **Validation plugins**: Custom validators

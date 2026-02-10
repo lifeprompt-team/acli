@@ -181,6 +181,58 @@ registerAcli(server, "acli", { math, time, echo }, "Agent CLI with multiple name
 
 ---
 
+## Theme 6: Interactive REPL
+
+**File:** [06-repl.ts](./06-repl.ts)
+
+**What you'll learn:**
+- Export commands from a file (no `runCli()` or MCP server needed)
+- Interactive REPL with tab completion
+- Single command execution with `exec`
+
+**The key difference:** Instead of calling `runCli()` or `registerAcli()`, just export your commands. The REPL loads them automatically.
+
+```typescript
+// Just export — that's it!
+export const add = defineCommand({ ... })
+export const greet = defineCommand({ ... })
+export const math = defineCommand({ subcommands: { ... } })
+```
+
+**Start REPL:**
+```bash
+npx @lifeprompt/acli repl examples/06-repl.ts
+```
+
+**Session example:**
+```
+acli> help
+acli> add 10 20
+acli> greet Alice --shout
+acli> math multiply 3 4
+acli> exit
+```
+
+**Single command execution:**
+```bash
+npx @lifeprompt/acli exec examples/06-repl.ts "add 10 20"
+npx @lifeprompt/acli exec examples/06-repl.ts "greet Alice --shout"
+```
+
+**Supported export patterns:**
+```typescript
+// Pattern 1: Individual named exports
+export const cmd1 = defineCommand({ ... })
+
+// Pattern 2: Default export
+export default { cmd1, cmd2 }
+
+// Pattern 3: Named 'commands' export
+export const commands = { cmd1, cmd2 }
+```
+
+---
+
 ## Local Testing with runCli()
 
 For development/debugging, you can test commands locally without MCP:
