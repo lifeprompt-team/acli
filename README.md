@@ -114,6 +114,66 @@ node my-cli.mjs greet World
 # → { "message": "Hello, World!" }
 ```
 
+### Interactive REPL
+
+Export commands from a file and explore them interactively — like dropping into a Docker container:
+
+```typescript
+// tools.ts
+import { z } from "zod"
+import { defineCommand, arg } from "@lifeprompt/acli"
+
+export const add = defineCommand({
+  description: "Add two numbers",
+  args: {
+    a: arg(z.number(), { positional: 0 }),
+    b: arg(z.number(), { positional: 1 }),
+  },
+  handler: async ({ a, b }) => ({ result: a + b }),
+})
+
+export const greet = defineCommand({
+  description: "Say hello",
+  args: {
+    name: arg(z.string(), { positional: 0 }),
+    shout: arg(z.boolean().default(false)),
+  },
+  handler: async ({ name, shout = false }) => {
+    const msg = `Hello, ${name}!`
+    return { message: shout ? msg.toUpperCase() : msg }
+  },
+})
+```
+
+```bash
+npx @lifeprompt/acli repl ./tools.ts
+
+  acli v0.7.3 — Interactive REPL
+  Loaded 2 command(s) from ./tools.ts
+  Type 'help' for commands, '.exit' to quit
+
+acli> add 10 20
+{ "result": 30 }
+
+acli> greet Alice --shout
+{ "message": "HELLO, ALICE!" }
+
+acli> help
+{ "commands": [{ "name": "add", ... }, { "name": "greet", ... }] }
+
+acli> exit
+Bye!
+```
+
+Single command execution (useful for scripting):
+
+```bash
+npx @lifeprompt/acli exec ./tools.ts "add 1 2"
+# → { "result": 3 }
+```
+
+> **TypeScript support:** Works natively on Node.js 22.6+, Bun, and Deno. For older Node.js, install [jiti](https://github.com/unjs/jiti): `npm install -D jiti`
+
 ---
 
 ## Argument Definition
@@ -398,6 +458,17 @@ Create a tool definition for manual integration.
 const tool = createAcli(commands)
 const result = await tool.execute({ command: "add 1 2" })
 ```
+
+### CLI (`npx @lifeprompt/acli`)
+
+```bash
+npx @lifeprompt/acli repl <file>           # Interactive REPL
+npx @lifeprompt/acli exec <file> <command>  # Single command execution
+npx @lifeprompt/acli --help                 # Show help
+npx @lifeprompt/acli --version              # Show version
+```
+
+The `<file>` should export ACLI commands via default export, named `commands` export, or individual named exports.
 
 ---
 

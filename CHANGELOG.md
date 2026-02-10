@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.7.3] - 2026-02-10
+
+### Added
+
+- **Interactive REPL (`acli repl`):** Load commands from a JS/TS file and explore them interactively with tab completion, command history, and colored output. Supports `.exit`, `.clear`, and all built-in discovery commands (`help`, `schema`, `version`).
+- **Single command execution (`acli exec`):** Execute a single ACLI command from a file and exit. Useful for scripting and CI pipelines.
+- **CLI entry point (`src/bin.ts`):** New standalone binary entry point for `npx @lifeprompt/acli`. Provides `repl`, `exec`, `--help`, and `--version` subcommands.
+- **Module loader with TypeScript support:** Dynamically imports JS/TS files exporting ACLI commands. Supports three export patterns: default export, named `commands` export, and individual named exports. Falls back to [jiti](https://github.com/unjs/jiti) for TypeScript on older Node.js runtimes.
+- **Example:** `examples/06-repl.ts` — Demonstrates REPL usage with various command types (positional args, flags, subcommands).
+
+### Changed
+
+- **`bin` entry updated:** `package.json` `bin` now points to `dist/bin.js` (was `dist/cli.js`). The `cli.ts` module remains unchanged as a library export (`runCli`).
+- **`tsup.config.ts` split into 3 build targets:** Library (CJS + ESM + DTS), REPL module (ESM), and CLI binary (ESM + shebang).
+- **New `./repl` export:** `package.json` `exports` now includes `"./repl"` for programmatic REPL/loader access.
+
+---
+
 ## [0.7.2] - 2026-02-10
 
 ### Added
