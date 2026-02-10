@@ -16,10 +16,13 @@
       "types": "./dist/cli.d.ts",
       "import": "./dist/cli.js",
       "require": "./dist/cli.cjs"
+    },
+    "./repl": {
+      "import": "./dist/repl.js"
     }
   },
   "bin": {
-    "acli": "./dist/cli.js"
+    "acli": "./dist/bin.js"
   },
   "files": [
     "dist",
