@@ -8,7 +8,7 @@ import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { createInterface } from 'node:readline'
 import { pathToFileURL } from 'node:url'
-import { executeCommand } from './executor'
+import { type ExecuteResult, executeCommand } from './executor'
 import type { CommandDefinition, CommandRegistry } from './router/registry'
 import { listCommands } from './router/registry'
 
@@ -39,7 +39,11 @@ async function importModule(filePath: string): Promise<Record<string, unknown>> 
   const absolutePath = resolve(process.cwd(), filePath)
 
   if (!existsSync(absolutePath)) {
-    throw new Error(`File not found: ${absolutePath}`)
+    throw new Error(
+      `File not found: ${absolutePath}\n\n` +
+        `Check the path or run from the project root.\n` +
+        `Example: npx acli repl ./examples/06-repl.ts`,
+    )
   }
 
   const isTypeScript = /\.tsx?$/.test(filePath)
@@ -173,14 +177,8 @@ export interface ReplOptions {
 export async function startRepl(options: ReplOptions): Promise<void> {
   const { file, prompt: customPrompt } = options
 
-  // Load commands
-  let commands: CommandRegistry
-  try {
-    commands = await loadCommands(file)
-  } catch (err) {
-    console.error(red(err instanceof Error ? err.message : String(err)))
-    process.exit(1)
-  }
+  // Load commands (throws on error — caller should handle)
+  const commands = await loadCommands(file)
 
   const commandList = listCommands(commands)
   const topLevelNames = Object.keys(commands)
@@ -211,63 +209,72 @@ export async function startRepl(options: ReplOptions): Promise<void> {
     terminal: process.stdin.isTTY ?? false,
   })
 
-  // Process lines sequentially (important for piped input where lines arrive all at once)
-  const queue: string[] = []
-  let processing = false
-  let exiting = false
+  // Wrap readline lifecycle in a Promise so callers can await completion
+  return new Promise<void>((resolvePromise) => {
+    // Process lines sequentially (important for piped input where lines arrive all at once)
+    const queue: string[] = []
+    let processing = false
+    let exiting = false
 
-  async function processQueue(): Promise<void> {
-    if (processing) return
-    processing = true
+    async function processQueue(): Promise<void> {
+      if (processing) return
+      processing = true
 
-    while (queue.length > 0 && !exiting) {
-      const line = queue.shift()!
-      await processLine(line)
+      while (queue.length > 0 && !exiting) {
+        const line = queue.shift()!
+        await processLine(line)
+      }
+
+      processing = false
+      if (!exiting) rl.prompt()
     }
 
-    processing = false
-    if (!exiting) rl.prompt()
-  }
+    async function processLine(line: string): Promise<void> {
+      const trimmed = line.trim()
 
-  async function processLine(line: string): Promise<void> {
-    const trimmed = line.trim()
+      // Skip empty lines
+      if (!trimmed) return
 
-    // Skip empty lines
-    if (!trimmed) return
+      // REPL meta-commands
+      if (trimmed === '.exit' || trimmed === 'exit') {
+        console.log(dim('Bye!'))
+        exiting = true
+        rl.close()
+        return
+      }
 
-    // REPL meta-commands
-    if (trimmed === '.exit' || trimmed === 'exit') {
-      console.log(dim('Bye!'))
-      exiting = true
-      rl.close()
-      return
+      if (trimmed === '.clear') {
+        console.clear()
+        return
+      }
+
+      // Execute ACLI command
+      try {
+        const { result, isError } = await executeCommand(trimmed, commands)
+        const output = JSON.stringify(result, null, 2)
+        console.log(isError ? red(output) : output)
+      } catch (err) {
+        console.error(red(err instanceof Error ? err.message : String(err)))
+      }
     }
 
-    if (trimmed === '.clear') {
-      console.clear()
-      return
-    }
+    rl.on('line', (line: string) => {
+      queue.push(line)
+      processQueue()
+    })
 
-    // Execute ACLI command
-    try {
-      const { result, isError } = await executeCommand(trimmed, commands)
-      const output = JSON.stringify(result, null, 2)
-      console.log(isError ? red(output) : output)
-    } catch (err) {
-      console.error(red(err instanceof Error ? err.message : String(err)))
-    }
-  }
+    // Ctrl+C: clear current input and show fresh prompt
+    rl.on('SIGINT', () => {
+      console.log('')
+      rl.prompt()
+    })
 
-  rl.on('line', (line: string) => {
-    queue.push(line)
-    processQueue()
+    rl.on('close', () => {
+      resolvePromise()
+    })
+
+    rl.prompt()
   })
-
-  rl.on('close', () => {
-    process.exit(0)
-  })
-
-  rl.prompt()
 }
 
 // ============================================================================
@@ -282,26 +289,17 @@ export interface ExecOptions {
 }
 
 /**
- * Execute a single command from a file and exit
+ * Execute a single command from a file and return the result.
  *
  * @example
  * ```typescript
  * import { execFromFile } from '@lifeprompt/acli/repl'
- * await execFromFile({ file: './tools.ts', command: 'add 1 2' })
+ * const { result, isError } = await execFromFile({ file: './tools.ts', command: 'add 1 2' })
+ * console.log(JSON.stringify(result, null, 2))
  * ```
  */
-export async function execFromFile(options: ExecOptions): Promise<void> {
+export async function execFromFile(options: ExecOptions): Promise<ExecuteResult> {
   const { file, command } = options
-
-  let commands: CommandRegistry
-  try {
-    commands = await loadCommands(file)
-  } catch (err) {
-    console.error(red(err instanceof Error ? err.message : String(err)))
-    process.exit(1)
-  }
-
-  const { result, isError } = await executeCommand(command, commands)
-  console.log(JSON.stringify(result, null, 2))
-  process.exit(isError ? 1 : 0)
+  const commands = await loadCommands(file)
+  return executeCommand(command, commands)
 }

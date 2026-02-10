@@ -40,11 +40,14 @@ async function main(): Promise<void> {
     if (!file || file.startsWith('-')) {
       console.error('Usage: acli repl <file>\n')
       console.error('  <file>  Path to JS/TS file exporting ACLI commands')
+      console.error('')
+      console.error('Example:')
+      console.error('  acli repl ./tools.ts')
       process.exit(1)
     }
     const { startRepl } = await import('./repl')
     await startRepl({ file })
-    return
+    process.exit(0)
   }
 
   // ── exec ──────────────────────────────────────────────────────────
@@ -61,8 +64,9 @@ async function main(): Promise<void> {
       process.exit(1)
     }
     const { execFromFile } = await import('./repl')
-    await execFromFile({ file, command })
-    return
+    const { result, isError } = await execFromFile({ file, command })
+    console.log(JSON.stringify(result, null, 2))
+    process.exit(isError ? 1 : 0)
   }
 
   // ── unknown ───────────────────────────────────────────────────────
