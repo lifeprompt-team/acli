@@ -9,13 +9,16 @@ const NO_COMMANDS = resolve(__dirname, 'fixtures/no-commands.mjs')
 /**
  * Run the CLI binary and capture output + exit code.
  */
-function run(args: string[], input?: string): Promise<{ stdout: string; stderr: string; code: number }> {
+function run(
+  args: string[],
+  input?: string,
+): Promise<{ stdout: string; stderr: string; code: number }> {
   return new Promise((resolve) => {
     const child = execFile('node', [BIN, ...args], { timeout: 10_000 }, (error, stdout, stderr) => {
       resolve({
         stdout: stdout.toString(),
         stderr: stderr.toString(),
-        code: error?.code != null ? (error.code as unknown as number) : child.exitCode ?? 0,
+        code: error?.code != null ? (error.code as unknown as number) : (child.exitCode ?? 0),
       })
     })
     if (input != null) {
