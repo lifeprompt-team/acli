@@ -60,9 +60,9 @@ jobs:
         if: steps.check.outputs.exists == 'false'
         run: pnpm build
 
-      - name: Publish to npm
+      - name: Publish to npm with provenance
         if: steps.check.outputs.exists == 'false'
-        run: pnpm publish --no-git-checks
+        run: pnpm publish --no-git-checks --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 

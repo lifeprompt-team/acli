@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.7.2] - 2026-02-10
+
+### Added
+
+- **SECURITY.md:** Security policy with vulnerability reporting flow, security model documentation, and explicit implementation responsibility boundary.
+- **Unicode & boundary value tests:** Comprehensive tests for Japanese, Chinese, Korean, emoji, RTL text, combining characters, full-width characters, surrogate pairs, and edge cases (boundary lengths, zero/negative numbers, empty strings, etc.).
+- **CI: Node.js version matrix:** Tests now run on Node.js 18, 20, and 22 (matching `engines: ">=18.0.0"`).
+- **CI: Zod compatibility matrix:** Tests run against multiple Zod v3 versions to verify peer dependency compatibility.
+- **CI: Coverage reporting:** Test coverage with `@vitest/coverage-v8`, uploaded to Codecov on Node.js 20 runs.
+- **npm provenance:** Packages are now published with `--provenance` for supply chain verification.
+
+### Changed
+
+- **SPEC.md promoted to v1.0.0-rc.1:** Updated from Draft/Proposal status to Release Candidate. Security section (§8) now includes explicit implementation responsibility boundary (§8.4). ABNF grammar updated to reflect combined short options, flag negation, and array accumulation.
+
+---
+
 ## [0.7.1] - 2026-02-09
 
 ### Fixed

@@ -1,8 +1,8 @@
 # ACLI - Agent CLI Specification
 
-**Version:** 0.1.0 (Draft)
-**Date:** 2026-02-02
-**Status:** Proposal
+**Version:** 1.0.0-rc.1
+**Date:** 2026-02-10
+**Status:** Release Candidate
 
 ---
 
@@ -671,14 +671,11 @@ const events = defineCommand({
 
 ### 8.2 Command Allowlist
 
-Implementations SHOULD maintain a whitelist of executable commands.
+ACLI enforces command whitelisting by design — only explicitly registered commands can be executed. Unknown commands result in a `COMMAND_NOT_FOUND` error with a hint to run `help`.
+
+Implementations MAY additionally maintain deny-lists for dangerous subcommands:
 
 ```typescript
-const ALLOWED_COMMANDS = new Set([
-  "calendar", "drive", "gmail", "sheets",
-  "help", "schema", "version"
-])
-
 const DENIED_SUBCOMMANDS = new Map([
   ["gmail", new Set(["delegates", "autoforward"])],  // Dangerous operations
 ])
@@ -686,7 +683,7 @@ const DENIED_SUBCOMMANDS = new Map([
 
 ### 8.3 Audit Logging
 
-Implementations SHOULD log all command executions to an audit log.
+Implementations SHOULD log command executions for compliance and debugging. ACLI provides the parsed command and arguments; logging infrastructure is the implementation's responsibility.
 
 ```typescript
 interface AuditLogEntry {
@@ -699,6 +696,20 @@ interface AuditLogEntry {
   user_context?: unknown  // Implementation-specific
 }
 ```
+
+### 8.4 Implementation Responsibility Boundary
+
+The following security concerns are explicitly outside ACLI's scope and MUST be handled by implementations:
+
+| Concern | Guidance |
+|---------|----------|
+| **Path Traversal** | Validate file paths in handlers. Reject `..` or absolute paths as needed. |
+| **Authentication** | Implement at the MCP server or middleware layer. |
+| **Rate Limiting** | Implement at the MCP server level. Use `RATE_LIMITED` error code. |
+| **Timeout Handling** | Implement in handlers. Use `TIMEOUT` error code. |
+| **Data Sanitization** | Sanitize before passing to external systems (DB, APIs). |
+
+See [SECURITY.md](../SECURITY.md) for the full security model documentation.
 
 ---
 
@@ -839,15 +850,21 @@ Conformance tests verify the following categories:
 command         = root-command *( SP subcommand ) *( SP argument )
 root-command    = 1*ALPHA
 subcommand      = 1*( ALPHA / "-" / "_" )
-argument        = positional / option
+argument        = positional / option / end-of-options
 positional      = value
-option          = short-opt / long-opt
-short-opt       = "-" ALPHA [ SP value ] ; value-attached form (-n10) is NOT supported
+option          = short-opt / long-opt / combined-short / negated-long
+short-opt       = "-" ALPHA [ "=" value / value-chars / SP value ]
+combined-short  = "-" 2*ALPHA [ "=" value / value-chars / SP value ]
+                  ; Last char may take a value; preceding chars are boolean flags
 long-opt        = "--" 1*( ALPHA / "-" ) [ "=" value / SP value ]
+negated-long    = "--no-" 1*( ALPHA / "-" )   ; boolean flag negation
+end-of-options  = "--"                        ; all subsequent tokens are positional
 value           = quoted-string / unquoted-string
+value-chars     = 1*( ALPHA / DIGIT / "-" / "_" / "." / "/" / "@" / ":" )
+                  ; Attached value (no space) for short options
 quoted-string   = DQUOTE *( escaped-char / safe-char ) DQUOTE
                 / "'" *safe-char "'"
-unquoted-string = 1*( ALPHA / DIGIT / "-" / "_" / "." / "/" / "@" )
+unquoted-string = 1*( ALPHA / DIGIT / "-" / "_" / "." / "/" / "@" / ":" )
 escaped-char    = "\" ( DQUOTE / "\" / "n" / "t" )
 safe-char       = %x20-21 / %x23-26 / %x28-5B / %x5D-7E  ; exclude \ and "
 ```
@@ -869,6 +886,14 @@ safe-char       = %x20-21 / %x23-26 / %x28-5B / %x5D-7E  ; exclude \ and "
 ---
 
 ## Appendix C: Changelog
+
+### Version 1.0.0-rc.1 (2026-02-10)
+
+- Promoted from Draft to Release Candidate
+- Updated security section (§8) with explicit implementation responsibility boundary
+- Added §8.4 documenting security concerns outside ACLI scope
+- Updated ABNF grammar: short options support attached values (`-n10`, `-n=10`)
+- Aligned option syntax (§7.3) with reference implementation (combined short options, flag negation, array accumulation)
 
 ### Version 0.1.0 (2026-02-02)
 
