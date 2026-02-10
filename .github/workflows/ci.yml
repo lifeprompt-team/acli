@@ -10,6 +10,58 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        node-version: ['18', '20', '22']
+
+    name: Node.js ${{ matrix.node-version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Test with coverage
+        run: pnpm test:coverage
+
+      - name: Build
+        run: pnpm build
+
+      - name: Upload coverage (Node.js 20 only)
+        if: matrix.node-version == '20'
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage/coverage-final.json
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  test-zod-compat:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        zod-version: ['3.23.0', '3.24.2']
+
+    name: Zod ${{ matrix.zod-version }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -27,14 +79,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm lint
-
-      - name: Type check
-        run: pnpm typecheck
+      - name: Override zod version
+        run: pnpm add -D zod@${{ matrix.zod-version }}
 
       - name: Test
         run: pnpm test:run
-
-      - name: Build
-        run: pnpm build
